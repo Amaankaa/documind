@@ -126,7 +126,15 @@ async def get_document_status(
     auth: tuple[User, Organization] = Depends(get_current_user_org),
     db: AsyncSession = Depends(get_db),
 ):
-    doc = await db.get(Document, doc_id)
+    _, org = auth
+    # Scope by org: join through the owning KB so a caller can only read the
+    # status of documents that belong to their organization.
+    result = await db.execute(
+        select(Document)
+        .join(KnowledgeBase, KnowledgeBase.id == Document.kb_id)
+        .where(Document.id == doc_id, KnowledgeBase.org_id == org.id)
+    )
+    doc = result.scalar_one_or_none()
     if doc is None:
         raise HTTPException(status_code=404, detail="Document not found")
     return doc
