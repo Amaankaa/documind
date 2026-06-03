@@ -2,7 +2,8 @@
 
 **AI-powered RAG knowledge base SaaS.** Upload your documents (PDF, DOCX, CSV, TXT) and chat with them — getting streaming answers with exact source citations.
 
-Built as a full-stack, production-grade portfolio project.
+A complete, full-stack portfolio project: multi-tenant FastAPI backend, async document
+ingestion pipeline, pgvector retrieval, and a Next.js chat UI — working end to end.
 
 ---
 
@@ -10,28 +11,29 @@ Built as a full-stack, production-grade portfolio project.
 
 | Layer | Technologies |
 |-------|-------------|
-| **Frontend** | Next.js 14 (App Router), TypeScript, TailwindCSS v4, shadcn/ui, Clerk, Zustand, React Query |
+| **Frontend** | Next.js 16 (App Router), React 19, TypeScript, TailwindCSS v4, shadcn/ui, Clerk, Zustand, React Query |
 | **Backend** | FastAPI, Python 3.11, SQLAlchemy 2.0 async, Alembic |
-| **AI / RAG** | LangChain, Google Gemini 2.5 Flash (chat), gemini-embedding-2-preview, pgvector |
+| **AI / RAG** | LangChain, Google Gemini 2.5 Flash (chat), `gemini-embedding-2-preview` (1536-dim), pgvector |
 | **Queue** | Celery + Redis |
-| **Storage** | Supabase Storage |
+| **Storage** | Supabase Storage (local-disk fallback for dev) |
 | **Database** | PostgreSQL 16 + pgvector |
 | **Auth** | Clerk (JWT, multi-tenant) |
+| **Observability** | Sentry, SlowAPI rate limiting |
 | **Infra** | Docker Compose |
 
 ---
 
 ## Features
 
-- Multi-tenant workspaces (one org per team)
+- Multi-tenant workspaces — every knowledge base, document and conversation is scoped to the caller's organization
 - Upload PDF, DOCX, CSV, TXT up to 50 MB
-- Async document ingestion pipeline (Celery)
-- Chunking with `RecursiveCharacterTextSplitter` (1000 / 200 overlap)
-- Cosine similarity retrieval via pgvector `<=>` operator
-- Streaming chat responses via SSE (Server-Sent Events)
+- Async document ingestion pipeline (Celery) with live per-document progress
+- Chunking with `RecursiveCharacterTextSplitter` (3000 / 600 overlap)
+- Top-k (12) cosine similarity retrieval via the pgvector `<=>` operator
+- Streaming chat responses via SSE (Server-Sent Events), with conversation history as context
 - Source citations on every AI answer
-- Conversation history
 - Usage stats dashboard
+- Per-endpoint rate limiting and Sentry error reporting
 
 ---
 
@@ -44,7 +46,7 @@ Built as a full-stack, production-grade portfolio project.
 - Python 3.11+ and [uv](https://github.com/astral-sh/uv)
 - A [Clerk](https://clerk.com) account
 - A [Google Gemini](https://aistudio.google.com/app/apikey) API key
-- A [Supabase](https://supabase.com) project
+- A [Supabase](https://supabase.com) project *(optional — set `USE_LOCAL_STORAGE=true` to store uploads on local disk for dev)*
 
 ### 1. Clone and configure
 
@@ -54,7 +56,8 @@ cd documind
 
 # Backend env
 cp backend/.env.example backend/.env
-# → fill in GEMINI_API_KEY, CLERK_SECRET_KEY, CLERK_JWKS_URL, SUPABASE_URL, SUPABASE_SERVICE_KEY
+# → fill in GEMINI_API_KEY, CLERK_SECRET_KEY, CLERK_JWKS_URL
+# → for storage either set SUPABASE_URL + SUPABASE_SERVICE_KEY, or USE_LOCAL_STORAGE=true
 
 # Frontend env
 cp frontend/.env.local.example frontend/.env.local
@@ -134,6 +137,7 @@ documind/
 
 | Method | Route | Description |
 |--------|-------|-------------|
+| `GET` | `/health` | Liveness check |
 | `POST` | `/api/org` | Create organization (onboarding) |
 | `GET` | `/api/org/usage` | Usage stats |
 | `POST` | `/api/kb` | Create knowledge base |
@@ -141,10 +145,33 @@ documind/
 | `DELETE` | `/api/kb/:id` | Delete knowledge base |
 | `POST` | `/api/kb/:id/documents` | Upload document |
 | `GET` | `/api/kb/:id/documents` | List documents |
-| `GET` | `/api/documents/:id/status` | Ingestion status |
+| `DELETE` | `/api/kb/:id/documents/:doc_id` | Delete document |
+| `POST` | `/api/kb/:id/documents/:doc_id/reingest` | Re-run ingestion |
+| `GET` | `/api/documents/:id/status` | Ingestion status / progress |
 | `POST` | `/api/kb/:id/query` | Chat (SSE streaming) |
-| `GET` | `/api/kb/:id/conversations` | List conversations |
+| `GET` | `/api/kb/:id/conversations` | List a KB's conversations |
+| `GET` | `/api/conversations` | List recent conversations |
 | `GET` | `/api/conversations/:id` | Get conversation + messages |
+| `DELETE` | `/api/conversations/:id` | Delete conversation |
+
+All `/api/*` routes require a Clerk bearer token and are scoped to the caller's organization.
+Interactive docs are available at `http://localhost:8000/docs` when the backend is running.
+
+---
+
+## Testing
+
+The backend ships with a pytest suite (34 tests) that mocks Clerk, Supabase and Gemini and
+runs against in-memory SQLite — no Postgres, Redis or network access required.
+
+```bash
+cd backend
+uv sync --extra dev        # installs test deps (pytest, aiosqlite); --extra dev is required
+uv run pytest -q
+```
+
+> **Note:** plain `uv sync` installs only runtime dependencies and will *remove* the test
+> tooling. Always use `--extra dev` (or `uv run --extra dev pytest`) to run the suite.
 
 ---
 
