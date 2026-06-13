@@ -1,0 +1,81 @@
+name: Claim pattern
+description: Claim an interview pattern to document in the knowledge base and wire into AlgoMentor
+title: "Claim: [Pattern name]"
+labels:
+  - claim
+  - community
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Claim a pattern from [OPEN_CONCEPTS.md](../../OPEN_CONCEPTS.md).
+        You will submit **two linked PRs** — one to
+        [algorithm-knowledge-base](https://github.com/BemnetMussa/algorithm-knowledge-base)
+        and one to AlgoMentor. See [CONTRIBUTING.md](../../CONTRIBUTING.md).
+
+  - type: input
+    id: pattern_name
+    attributes:
+      label: Pattern name
+      description: e.g. Greedy, Bit Manipulation, Intervals
+      placeholder: Greedy
+    validations:
+      required: true
+
+  - type: input
+    id: slug
+    attributes:
+      label: Compass slug
+      description: From interview_concepts.py or OPEN_CONCEPTS.md
+      placeholder: greedy
+    validations:
+      required: true
+
+  - type: dropdown
+    id: tier
+    attributes:
+      label: Interview tier
+      options:
+        - Core
+        - Bonus
+        - Proposed (discuss first)
+    validations:
+      required: true
+
+  - type: input
+    id: github_username
+    attributes:
+      label: Your GitHub username
+      placeholder: "@your-username"
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: I understand the dual-PR workflow
+      options:
+        - label: I will add a note to algorithm-knowledge-base (following their template)
+          required: true
+        - label: I will wire the pattern in AlgoMentor (interview_concepts.py + a2sv_github_resources.py)
+          required: true
+        - label: I have read INTERVIEW_SCOPE.md
+          required: true
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes (optional)
+      description: Prerequisites you plan, LeetCode problems you have in mind, etc.
+
+  - type: input
+    id: kb_pr
+    attributes:
+      label: Knowledge-base PR (fill after opening)
+      placeholder: https://github.com/BemnetMussa/algorithm-knowledge-base/pull/123
+
+  - type: input
+    id: compass_pr
+    attributes:
+      label: AlgoMentor PR (fill after opening)
+      placeholder: https://github.com/your-org/algomentor/pull/456

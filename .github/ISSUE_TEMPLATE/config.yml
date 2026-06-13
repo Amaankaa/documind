@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Algorithm Knowledge Base
+    url: https://github.com/BemnetMussa/algorithm-knowledge-base
+    about: Community DSA notes, templates, and LeetCode picks
+  - name: Open concepts to claim
+    url: https://github.com/your-org/algomentor/blob/main/OPEN_CONCEPTS.md
+    about: Patterns that need contributors
