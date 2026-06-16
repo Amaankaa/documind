@@ -8,6 +8,7 @@ from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
+from app.services.community import assert_chunk_capacity
 from app.models import Document, DocumentChunk
 from app.services.embeddings import get_embeddings
 from app.services.parsers import parse_document, parse_html
@@ -72,6 +73,7 @@ async def run_ingestion(document_id: uuid.UUID, db: AsyncSession) -> None:
         # 3. Split
         chunks: list[str] = _splitter.split_text(text)
         logger.info("Document %s split into %d chunks", document_id, len(chunks))
+        await assert_chunk_capacity(db, doc.kb_id, additional_chunks=len(chunks))
         await _set_progress(document_id, _STAGE_SPLIT, db)
 
         # 4. Embed one chunk at a time, reporting proportional progress

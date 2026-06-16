@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import asyncio
 import logging
+from contextlib import asynccontextmanager
 
 import sentry_sdk
 from fastapi import FastAPI
@@ -12,6 +14,7 @@ from app.config import get_settings
 from app.limiter import limiter
 from app.routers import (
     api_keys,
+    concepts,
     conversations,
     documents,
     evaluation,
@@ -19,9 +22,36 @@ from app.routers import (
     kb,
     org,
     query,
+    study_map,
 )
 
+logger = logging.getLogger(__name__)
 settings = get_settings()
+
+
+async def _run_startup_community_sync() -> None:
+    from app.database import AsyncSessionLocal
+    from app.services.github_sync import sync_community_notes
+    from app.services.storage import storage_ready
+
+    if not storage_ready():
+        logger.warning("Skipping startup community sync — storage not configured")
+        return
+
+    try:
+        async with AsyncSessionLocal() as db:
+            result = await sync_community_notes(db)
+        logger.info("Startup community sync: %s", result)
+    except Exception:
+        logger.exception("Startup community sync failed")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    if settings.community_sync_on_startup:
+        asyncio.create_task(_run_startup_community_sync())
+    yield
+
 
 # ── Sentry ────────────────────────────────────────────────────────────────────
 if settings.sentry_dsn:
@@ -29,9 +59,10 @@ if settings.sentry_dsn:
 
 # ── App ───────────────────────────────────────────────────────────────────────
 app = FastAPI(
-    title="DocuMind API",
-    version="0.1.0",
-    description="AI-powered RAG knowledge base SaaS",
+    title="AlgoMentor API",
+    version="0.2.0",
+    description="Graph-guided big-tech interview prep with RAG tutoring",
+    lifespan=lifespan,
 )
 
 app.state.limiter = limiter
@@ -46,6 +77,7 @@ app.add_middleware(
 )
 
 # ── Routers ───────────────────────────────────────────────────────────────────
+app.include_router(study_map.router)
 app.include_router(org.router)
 app.include_router(kb.router)
 app.include_router(documents.router)
@@ -55,8 +87,16 @@ app.include_router(conversations.router)
 app.include_router(feedback.router)
 app.include_router(api_keys.router)
 app.include_router(evaluation.router)
+app.include_router(concepts.router)
 
 
 @app.get("/health")
 async def health():
-    return {"status": "ok"}
+    from app.services.storage import storage_backend_label, storage_ready
+
+    return {
+        "status": "ok",
+        "storage": storage_backend_label(),
+        "storage_ready": storage_ready(),
+        "llm_provider": get_settings().llm_provider,
+    }

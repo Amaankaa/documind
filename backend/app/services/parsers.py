@@ -20,7 +20,7 @@ def parse_document(file_bytes: bytes, filename: str) -> str:
         return _parse_pdf(file_bytes)
     elif suffix in (".docx", ".doc"):
         return _parse_docx(file_bytes)
-    elif suffix == ".txt":
+    elif suffix in (".txt", ".md", ".markdown"):
         return file_bytes.decode("utf-8", errors="replace")
     elif suffix == ".csv":
         return _parse_csv(file_bytes)

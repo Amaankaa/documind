@@ -45,8 +45,8 @@ services:
       REDIS_URL: redis://redis:6379/0
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/1
-      USE_LOCAL_STORAGE: "true"
       LOCAL_STORAGE_DIR: /app/.local_storage
+      COMMUNITY_SYNC_ON_STARTUP: "true"
     volumes:
       - documind_local_storage:/app/.local_storage
     ports:
@@ -73,7 +73,6 @@ services:
       REDIS_URL: redis://redis:6379/0
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/1
-      USE_LOCAL_STORAGE: "true"
       LOCAL_STORAGE_DIR: /app/.local_storage
     volumes:
       - documind_local_storage:/app/.local_storage
@@ -82,7 +81,32 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: celery -A app.tasks.ingest_task worker --loglevel=info --concurrency=2
+    command: celery -A app.tasks.ingest_task worker --loglevel=info --concurrency=1
+
+  celery_beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: documind_celery_beat
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/documind
+      SYNC_DATABASE_URL: postgresql://postgres:postgres@postgres:5432/documind
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+      LOCAL_STORAGE_DIR: /app/.local_storage
+      COMMUNITY_SYNC_INTERVAL_HOURS: "6"
+    volumes:
+      - documind_local_storage:/app/.local_storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: celery -A app.tasks.ingest_task beat --loglevel=info
 
   frontend:
     build:
