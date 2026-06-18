@@ -8,6 +8,9 @@ import { cn } from "@/lib/utils";
 export default function KBLayout({ children }: { children: React.ReactNode }) {
   const { id } = useParams<{ id: string }>();
   const pathname = usePathname();
+  // Chat owns a fixed viewport and manages its own scroll; every other
+  // sub-route (docs, eval) is a normal scrolling page.
+  const isChat = pathname.endsWith("/chat");
 
   const tabs = [
     { href: `/kb/${id}/chat`, label: "Chat", icon: MessageSquare },
@@ -38,7 +41,9 @@ export default function KBLayout({ children }: { children: React.ReactNode }) {
           })}
         </div>
       )}
-      <div className="min-h-0 flex-1 overflow-hidden">{children}</div>
+      <div className={cn("min-h-0 flex-1", isChat ? "overflow-hidden" : "overflow-y-auto")}>
+        {children}
+      </div>
     </div>
   );
 }
