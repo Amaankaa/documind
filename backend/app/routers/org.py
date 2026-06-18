@@ -110,6 +110,7 @@ async def get_usage(
             FROM documents d
             JOIN knowledge_bases kb ON kb.id = d.kb_id
             WHERE kb.org_id = :org_id
+              AND kb.is_community = false
             """
         ),
         {"org_id": str(org.id)},

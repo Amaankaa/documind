@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import get_settings
 from app.database import get_db
 from app.models import ApiKey, Organization, User
+from app.services.community import ensure_user_org
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -174,4 +175,5 @@ async def get_user_org_flexible(
             headers={"WWW-Authenticate": "Bearer"},
         )
     user = await get_current_user(credentials, db)
-    return await get_current_user_org(user, db)
+    org = await ensure_user_org(db, user)
+    return user, org

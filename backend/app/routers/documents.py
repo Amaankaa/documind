@@ -14,6 +14,7 @@ from app.auth import get_current_user_org
 from app.config import get_settings
 from app.database import AsyncSessionLocal, get_db
 from app.models import Document, DocumentChunk, KnowledgeBase, Organization, User
+from app.services.community import consolidate_workspace_documents, get_kb_for_access, get_kb_for_write
 from app.services.storage import upload_file
 
 router = APIRouter(prefix="/api/kb/{kb_id}/documents", tags=["documents"])
@@ -76,16 +77,12 @@ async def _get_kb_for_org(
     kb_id: uuid.UUID,
     org: Organization,
     db: AsyncSession,
+    *,
+    write: bool = False,
 ) -> KnowledgeBase:
-    result = await db.execute(
-        select(KnowledgeBase).where(
-            KnowledgeBase.id == kb_id, KnowledgeBase.org_id == org.id
-        )
-    )
-    kb = result.scalar_one_or_none()
-    if kb is None:
-        raise HTTPException(status_code=404, detail="Knowledge base not found")
-    return kb
+    if write:
+        return await get_kb_for_write(db, kb_id, org)
+    return await get_kb_for_access(db, kb_id, org)
 
 
 def _validate_public_url(raw_url: str) -> str:
@@ -128,7 +125,7 @@ async def upload_document(
     db: AsyncSession = Depends(get_db),
 ):
     _, org = auth
-    await _get_kb_for_org(kb_id, org, db)
+    await _get_kb_for_org(kb_id, org, db, write=True)
 
     # Validate size & type server-side
     content_type = file.content_type or ""
@@ -170,7 +167,7 @@ async def ingest_url(
     """Ingest a public web page into the knowledge base. The page URL is stored
     as the document's source; the ingestion pipeline fetches and extracts it."""
     _, org = auth
-    await _get_kb_for_org(kb_id, org, db)
+    await _get_kb_for_org(kb_id, org, db, write=True)
 
     url = _validate_public_url(str(body.url))
     parsed = urlparse(url)
@@ -200,8 +197,25 @@ async def list_documents(
     db: AsyncSession = Depends(get_db),
 ):
     _, org = auth
-    await _get_kb_for_org(kb_id, org, db)
-    result = await db.execute(select(Document).where(Document.kb_id == kb_id))
+    kb = await _get_kb_for_org(kb_id, org, db)
+    if kb.is_personal:
+        await consolidate_workspace_documents(db, org, kb)
+        # Personal workspace shows every private upload for the org.
+        result = await db.execute(
+            select(Document)
+            .join(KnowledgeBase, KnowledgeBase.id == Document.kb_id)
+            .where(
+                KnowledgeBase.org_id == org.id,
+                KnowledgeBase.is_community.is_(False),
+            )
+            .order_by(Document.created_at.desc())
+        )
+    else:
+        result = await db.execute(
+            select(Document)
+            .where(Document.kb_id == kb_id)
+            .order_by(Document.created_at.desc())
+        )
     return result.scalars().all()
 
 
@@ -258,7 +272,7 @@ async def delete_document(
     db: AsyncSession = Depends(get_db),
 ):
     _, org = auth
-    await _get_kb_for_org(kb_id, org, db)
+    await _get_kb_for_org(kb_id, org, db, write=True)
     result = await db.execute(
         select(Document).where(Document.id == doc_id, Document.kb_id == kb_id)
     )
@@ -299,7 +313,7 @@ async def reingest_document(
 ):
     """Delete existing chunks and re-run the ingestion pipeline with current settings."""
     _, org = auth
-    await _get_kb_for_org(kb_id, org, db)
+    await _get_kb_for_org(kb_id, org, db, write=True)
 
     result = await db.execute(
         select(Document).where(Document.id == doc_id, Document.kb_id == kb_id)

@@ -5,12 +5,13 @@ from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import get_current_user_org
 from app.database import get_db
 from app.models import Conversation, Feedback, KnowledgeBase, Message, Organization, User
+from app.services.community import get_kb_for_access
 
 router = APIRouter(prefix="/api", tags=["conversations"])
 
@@ -47,6 +48,7 @@ async def list_conversations(
     db: AsyncSession = Depends(get_db),
 ):
     user, org = auth
+    await get_kb_for_access(db, kb_id, org)
     last_message_at = (
         select(
             Message.conversation_id,
@@ -62,7 +64,6 @@ async def list_conversations(
         .where(
             Conversation.kb_id == kb_id,
             Conversation.user_id == user.id,
-            KnowledgeBase.org_id == org.id,
         )
         .order_by(
             func.coalesce(last_message_at.c.last_message_at, Conversation.created_at).desc()
@@ -89,7 +90,13 @@ async def list_recent_conversations(
         select(Conversation)
         .join(KnowledgeBase, KnowledgeBase.id == Conversation.kb_id)
         .outerjoin(last_message_at, last_message_at.c.conversation_id == Conversation.id)
-        .where(Conversation.user_id == user.id, KnowledgeBase.org_id == org.id)
+        .where(
+            Conversation.user_id == user.id,
+            or_(
+                KnowledgeBase.is_community.is_(True),
+                KnowledgeBase.org_id == org.id,
+            ),
+        )
         .order_by(
             func.coalesce(last_message_at.c.last_message_at, Conversation.created_at).desc()
         )
@@ -110,7 +117,10 @@ async def get_conversation(
         .where(
             Conversation.id == conv_id,
             Conversation.user_id == user.id,
-            KnowledgeBase.org_id == org.id,
+            or_(
+                KnowledgeBase.is_community.is_(True),
+                KnowledgeBase.org_id == org.id,
+            ),
         )
     )
     conv = result.scalar_one_or_none()
@@ -171,7 +181,10 @@ async def clear_conversation_history(
         .join(KnowledgeBase, KnowledgeBase.id == Conversation.kb_id)
         .where(
             Conversation.user_id == user.id,
-            KnowledgeBase.org_id == org.id,
+            or_(
+                KnowledgeBase.is_community.is_(True),
+                KnowledgeBase.org_id == org.id,
+            ),
         )
         .scalar_subquery()
     )
@@ -200,7 +213,10 @@ async def delete_conversation(
         .where(
             Conversation.id == conv_id,
             Conversation.user_id == user.id,
-            KnowledgeBase.org_id == org.id,
+            or_(
+                KnowledgeBase.is_community.is_(True),
+                KnowledgeBase.org_id == org.id,
+            ),
         )
     )
     conv = result.scalar_one_or_none()
