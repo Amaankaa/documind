@@ -11,6 +11,7 @@ import {
   BrainCircuit,
   Clock,
   Files,
+  FlaskConical,
   LayoutDashboard,
   Loader2,
   MessageSquare,
@@ -136,6 +137,7 @@ export function AppSidebar() {
   const resolvedKbId = currentKbId ?? conversations?.[0]?.kb_id ?? firstKbId ?? null;
   const newChatHref = resolvedKbId ? `/kb/${resolvedKbId}/chat` : "/dashboard";
   const docsHref = resolvedKbId ? `/kb/${resolvedKbId}/docs` : "/dashboard";
+  const evalHref = resolvedKbId ? `/kb/${resolvedKbId}/eval` : "/dashboard";
 
   // Drop a deleted conversation out of every cached list so the sidebar updates
   // instantly, without waiting for a refetch.
@@ -261,6 +263,9 @@ export function AppSidebar() {
           </BottomLink>
           <BottomLink href={docsHref} active={pathname.endsWith("/docs")} icon={<Files className="size-4" />}>
             Documents
+          </BottomLink>
+          <BottomLink href={evalHref} active={pathname.endsWith("/eval")} icon={<FlaskConical className="size-4" />}>
+            Evaluation
           </BottomLink>
           <BottomLink href="/analytics" active={pathname === "/analytics"} icon={<BarChart3 className="size-4" />}>
             Analytics

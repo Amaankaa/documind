@@ -1,9 +1,11 @@
 # PRD — DocuMind: AI-Powered RAG Knowledge Base SaaS
 
-**Document Version:** 2.0
+**Document Version:** 2.1
 **Date:** June 18, 2026
-**Status:** Built — feature-complete MVP, validated by a 71-test backend suite
+**Status:** Built — feature-complete MVP, validated by an 87-test backend suite
 
+> **Changelog (v2.0 → v2.1):** Added a **RAG evaluation harness** — retrieval metrics (hit rate, MRR, precision@k) plus a Gemini LLM-as-judge scoring groundedness and answer relevance, with auto-generated + manual test sets, async run execution, and a results dashboard.
+>
 > **Changelog (v1.0 → v2.0):** Corrected the tech stack to reflect what was actually built (Google Gemini, not OpenAI/Pinecone). Marked shipped features as done and added features built beyond the original scope: public API keys, usage analytics, citation deep-view, URL ingestion with an SSRF guard, answer feedback, and full chat-history deletion. Removed throwaway portfolio framing.
 
 ---
@@ -50,7 +52,8 @@ DocuMind provides a clean web interface where users upload documents, which are 
 | Streaming UX | Answers stream token by token | Streaming via SSE | ✓ |
 | Programmatic access | REST API authenticated by API key | Dual auth (JWT or key) | ✓ |
 | Deploy-readiness | Reproducible container stack | Docker Compose | ✓ |
-| Test coverage | Automated backend test suite | Core + new surface covered | ✓ (71 tests) |
+| Answer quality, measured | Retrieval + groundedness/relevance scoring | Eval harness with metrics | ✓ |
+| Test coverage | Automated backend test suite | Core + new surface covered | ✓ (87 tests) |
 
 ---
 
@@ -115,6 +118,7 @@ DocuMind provides a clean web interface where users upload documents, which are 
 - [x] **Web URL ingestion** — paste a URL, server fetches and extracts readable text, ingests like any document
 - [x] **Citation deep-view** — click a citation to read the cited passage in context (neighbouring chunks)
 - [x] **Chat-history management** — delete an individual conversation, or clear the entire history at once (scoped to the caller)
+- [x] **RAG evaluation harness** — build labeled test sets (auto-generated from documents *and* manual), then score each case on retrieval (hit rate, MRR, precision@k vs. labeled docs) and generation (Gemini LLM-as-judge: groundedness/faithfulness + answer relevance, 0–1 with rationale). Runs execute asynchronously via Celery with status polling; results render in a dashboard with metric cards, a score-profile chart, and a per-case table. Auto-generated ground truth is labeled *synthetic* for honesty.
 
 ### 4.3 Security hardening (built)
 - [x] **SSRF guard on URL ingestion** — resolves the host and rejects private, loopback, link-local, reserved, multicast, and cloud-metadata (169.254.169.254) targets; non-`http(s)` schemes rejected at validation
@@ -315,6 +319,18 @@ DELETE /api/api-keys/:id                → Revoke a key
 
 # Analytics
 GET    /api/org/analytics               → Queries over time, top docs, status mix, feedback
+
+# Evaluation harness
+POST   /api/kb/:id/eval-sets            → Create a test set (optional inline cases)
+GET    /api/kb/:id/eval-sets            → List sets w/ case count + latest-run summary
+POST   /api/kb/:id/eval-sets/:sid/generate → Auto-generate cases from documents (synthetic ground truth)
+GET    /api/eval-sets/:sid              → Set + cases
+DELETE /api/eval-sets/:sid              → Delete a set
+POST   /api/eval-sets/:sid/cases        → Add a manual case (question + relevant doc ids)
+DELETE /api/eval-sets/:sid/cases/:cid   → Remove a case
+POST   /api/eval-sets/:sid/run          → Start a run (async via Celery)
+GET    /api/eval-runs/:rid              → Run status + aggregate metrics (poll)
+GET    /api/eval-runs/:rid/results      → Per-case results (hit, scores, rationale)
 ```
 
 ---
@@ -482,4 +498,4 @@ name when relevant.
 
 ---
 
-*End of PRD — DocuMind v2.0*
+*End of PRD — DocuMind v2.1*

@@ -6,7 +6,9 @@ from datetime import datetime
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     JSON,
+    Boolean,
     DateTime,
+    Float,
     ForeignKey,
     Integer,
     String,
@@ -190,3 +192,101 @@ class Feedback(Base):
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
     rating: Mapped[str] = mapped_column(String, nullable=False)  # positive | negative
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+# ---------------------------------------------------------------------------
+# Evaluation harness
+#
+# Measures RAG quality along two axes:
+#   - retrieval (deterministic: hit rate, MRR, precision@k vs. labeled docs)
+#   - generation (Gemini LLM-as-judge: groundedness + answer relevance)
+# An EvalSet holds labeled cases; an EvalRun executes them and stores
+# per-case EvalResults plus aggregate metrics.
+# ---------------------------------------------------------------------------
+class EvalSet(Base):
+    __tablename__ = "eval_sets"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    kb_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("knowledge_bases.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    cases: Mapped[list["EvalCase"]] = relationship(
+        back_populates="eval_set", cascade="all, delete-orphan"
+    )
+    runs: Mapped[list["EvalRun"]] = relationship(
+        back_populates="eval_set", cascade="all, delete-orphan"
+    )
+
+
+class EvalCase(Base):
+    __tablename__ = "eval_cases"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    eval_set_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("eval_sets.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    question: Mapped[str] = mapped_column(Text, nullable=False)
+    # Ground truth: document ids that *should* be retrieved (list of uuid strings).
+    relevant_doc_ids: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    # For auto-generated cases, the chunk the question was written from.
+    source_chunk_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), nullable=True
+    )
+    origin: Mapped[str] = mapped_column(String, default="manual")  # auto | manual
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    eval_set: Mapped["EvalSet"] = relationship(back_populates="cases")
+
+
+class EvalRun(Base):
+    __tablename__ = "eval_runs"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    eval_set_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("eval_sets.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    status: Mapped[str] = mapped_column(String, default="pending")  # pending|running|completed|failed
+    top_k: Mapped[int] = mapped_column(Integer, nullable=False)
+    num_cases: Mapped[int] = mapped_column(Integer, default=0)
+    # Aggregate metrics (null until the run completes).
+    hit_rate: Mapped[float | None] = mapped_column(Float, nullable=True)
+    mrr: Mapped[float | None] = mapped_column(Float, nullable=True)
+    avg_precision: Mapped[float | None] = mapped_column(Float, nullable=True)
+    avg_groundedness: Mapped[float | None] = mapped_column(Float, nullable=True)
+    avg_relevance: Mapped[float | None] = mapped_column(Float, nullable=True)
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    eval_set: Mapped["EvalSet"] = relationship(back_populates="runs")
+    results: Mapped[list["EvalResult"]] = relationship(
+        back_populates="run", cascade="all, delete-orphan"
+    )
+
+
+class EvalResult(Base):
+    __tablename__ = "eval_results"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    run_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("eval_runs.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    case_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("eval_cases.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    question: Mapped[str] = mapped_column(Text, nullable=False)  # snapshot
+    generated_answer: Mapped[str | None] = mapped_column(Text, nullable=True)
+    retrieved_doc_ids: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    retrieved_chunk_ids: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    retrieval_hit: Mapped[bool] = mapped_column(Boolean, default=False)
+    reciprocal_rank: Mapped[float] = mapped_column(Float, default=0.0)
+    precision_at_k: Mapped[float] = mapped_column(Float, default=0.0)
+    groundedness: Mapped[float | None] = mapped_column(Float, nullable=True)
+    relevance: Mapped[float | None] = mapped_column(Float, nullable=True)
+    judge_rationale: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    run: Mapped["EvalRun"] = relationship(back_populates="results")

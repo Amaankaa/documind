@@ -97,3 +97,45 @@ async def stream_rag_response(
         }
     ):
         yield chunk.content
+
+
+def _build_human_turn(question: str, chunks: list[RetrievedChunk]) -> str:
+    if chunks:
+        context = _build_context(chunks)
+        return (
+            f"Context Documents:\n{context}\n\n"
+            f"---\n"
+            f"Question: {question}\n\n"
+            f"Answer using only the context above."
+        )
+    return f"[No relevant document content was found for this query.]\n\nQuestion: {question}"
+
+
+async def answer_once(
+    question: str,
+    chunks: list[RetrievedChunk],
+    org_name: str = "your organization",
+    history: list[tuple[str, str]] | None = None,
+) -> str:
+    """Non-streaming sibling of stream_rag_response — returns the full answer.
+
+    Used by the evaluation harness, which needs the complete answer to judge
+    rather than a token stream. Shares the same prompt and context builder so
+    it evaluates the exact behaviour the live chat path produces.
+    """
+    llm = ChatGoogleGenerativeAI(
+        model=settings.chat_model,
+        google_api_key=settings.gemini_api_key,
+        streaming=False,
+        temperature=1.0,
+    )
+    chain = RAG_PROMPT | llm
+    result = await chain.ainvoke(
+        {
+            "org_name": org_name,
+            "history": _build_history(history or []),
+            "human_turn": _build_human_turn(question, chunks),
+        }
+    )
+    content = result.content
+    return content if isinstance(content, str) else str(content)

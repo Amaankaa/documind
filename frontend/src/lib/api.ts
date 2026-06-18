@@ -98,3 +98,97 @@ export const conversationsApi = {
   deleteAll: (config?: AxiosRequestConfig) =>
     api.delete("/api/conversations", config),
 };
+
+// ── Evaluation harness types ──────────────────────────────────────────────────
+
+export type EvalRunStatus = "pending" | "running" | "completed" | "failed";
+
+export interface EvalRun {
+  id: string;
+  eval_set_id: string;
+  status: EvalRunStatus;
+  top_k: number;
+  num_cases: number;
+  hit_rate: number | null;
+  mrr: number | null;
+  avg_precision: number | null;
+  avg_groundedness: number | null;
+  avg_relevance: number | null;
+  error: string | null;
+  created_at: string;
+  finished_at: string | null;
+}
+
+export interface EvalCase {
+  id: string;
+  question: string;
+  relevant_doc_ids: string[] | null;
+  source_chunk_id: string | null;
+  origin: "auto" | "manual";
+}
+
+export interface EvalSetSummary {
+  id: string;
+  kb_id: string;
+  name: string;
+  created_at: string;
+  case_count: number;
+  latest_run: EvalRun | null;
+}
+
+export interface EvalSetDetail {
+  id: string;
+  kb_id: string;
+  name: string;
+  created_at: string;
+  cases: EvalCase[];
+}
+
+export interface EvalResult {
+  id: string;
+  question: string;
+  generated_answer: string | null;
+  retrieved_doc_ids: string[] | null;
+  retrieval_hit: boolean;
+  reciprocal_rank: number;
+  precision_at_k: number;
+  groundedness: number | null;
+  relevance: number | null;
+  judge_rationale: string | null;
+}
+
+export const evalApi = {
+  listSets: (kbId: string, config?: AxiosRequestConfig) =>
+    api.get<EvalSetSummary[]>(`/api/kb/${kbId}/eval-sets`, config),
+  createSet: (kbId: string, name: string, config?: AxiosRequestConfig) =>
+    api.post<EvalSetDetail>(`/api/kb/${kbId}/eval-sets`, { name }, config),
+  getSet: (setId: string, config?: AxiosRequestConfig) =>
+    api.get<EvalSetDetail>(`/api/eval-sets/${setId}`, config),
+  deleteSet: (setId: string, config?: AxiosRequestConfig) =>
+    api.delete(`/api/eval-sets/${setId}`, config),
+  generate: (kbId: string, setId: string, numCases: number, config?: AxiosRequestConfig) =>
+    api.post<EvalSetDetail>(
+      `/api/kb/${kbId}/eval-sets/${setId}/generate`,
+      { num_cases: numCases },
+      config,
+    ),
+  addCase: (
+    setId: string,
+    question: string,
+    relevantDocIds: string[],
+    config?: AxiosRequestConfig,
+  ) =>
+    api.post<EvalCase>(
+      `/api/eval-sets/${setId}/cases`,
+      { question, relevant_doc_ids: relevantDocIds },
+      config,
+    ),
+  deleteCase: (setId: string, caseId: string, config?: AxiosRequestConfig) =>
+    api.delete(`/api/eval-sets/${setId}/cases/${caseId}`, config),
+  run: (setId: string, config?: AxiosRequestConfig) =>
+    api.post<EvalRun>(`/api/eval-sets/${setId}/run`, {}, config),
+  getRun: (runId: string, config?: AxiosRequestConfig) =>
+    api.get<EvalRun>(`/api/eval-runs/${runId}`, config),
+  getResults: (runId: string, config?: AxiosRequestConfig) =>
+    api.get<EvalResult[]>(`/api/eval-runs/${runId}/results`, config),
+};

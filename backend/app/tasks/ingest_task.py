@@ -12,6 +12,10 @@ celery_app = Celery(
     "documind",
     broker=settings.celery_broker_url,
     backend=settings.celery_result_backend,
+    # Modules the worker imports on startup so their @task decorators register.
+    # eval_task reuses this same celery_app, so it must be listed explicitly —
+    # the worker boots with `-A app.tasks.ingest_task` and won't find it otherwise.
+    include=["app.tasks.ingest_task", "app.tasks.eval_task"],
 )
 celery_app.conf.task_serializer = "json"
 celery_app.conf.result_serializer = "json"

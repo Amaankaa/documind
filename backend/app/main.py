@@ -10,7 +10,16 @@ from slowapi.errors import RateLimitExceeded
 
 from app.config import get_settings
 from app.limiter import limiter
-from app.routers import api_keys, conversations, documents, feedback, kb, org, query
+from app.routers import (
+    api_keys,
+    conversations,
+    documents,
+    evaluation,
+    feedback,
+    kb,
+    org,
+    query,
+)
 
 settings = get_settings()
 
@@ -45,6 +54,7 @@ app.include_router(query.router)
 app.include_router(conversations.router)
 app.include_router(feedback.router)
 app.include_router(api_keys.router)
+app.include_router(evaluation.router)
 
 
 @app.get("/health")
