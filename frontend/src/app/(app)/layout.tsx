@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { Suspense, useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { AppSidebar } from "@/components/app/AppSidebar";
 
@@ -23,15 +23,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <div className="flex h-dvh w-full overflow-hidden bg-[#f5efe3] text-[#14110f]">
-      <AppSidebar />
+    <div className="theme-app flex h-dvh w-full overflow-hidden bg-canvas text-ink">
+      <Suspense fallback={<div className="w-72 shrink-0 bg-cream" />}>
+        <AppSidebar />
+      </Suspense>
       <div
         ref={contentRef}
         className="relative flex min-w-0 flex-1 flex-col overflow-hidden"
       >
         <div className="pointer-events-none absolute inset-0 z-0">
-          <div className="absolute -right-24 top-0 h-80 w-80 rounded-full bg-[#7c3aed]/20 blur-[90px]" />
-          <div className="absolute bottom-[-8rem] left-1/4 h-96 w-96 rounded-full bg-[#19c6a3]/20 blur-[100px]" />
+          <div className="absolute -right-24 top-0 h-80 w-80 rounded-full bg-violet/20 blur-[90px]" />
+          <div className="absolute bottom-[-8rem] left-1/4 h-96 w-96 rounded-full bg-teal/20 blur-[100px]" />
           <div className="absolute inset-0 bg-[linear-gradient(rgba(20,17,15,0.045)_1px,transparent_1px),linear-gradient(90deg,rgba(20,17,15,0.045)_1px,transparent_1px)] bg-[size:34px_34px]" />
         </div>
         <main

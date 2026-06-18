@@ -5,21 +5,18 @@ import logging
 import sentry_sdk
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
-from slowapi.util import get_remote_address
 
 from app.config import get_settings
-from app.routers import conversations, documents, kb, org, query
+from app.limiter import limiter
+from app.routers import api_keys, conversations, documents, feedback, kb, org, query
 
 settings = get_settings()
 
 # ── Sentry ────────────────────────────────────────────────────────────────────
 if settings.sentry_dsn:
     sentry_sdk.init(dsn=settings.sentry_dsn, traces_sample_rate=0.2)
-
-# ── Rate limiter ──────────────────────────────────────────────────────────────
-limiter = Limiter(key_func=get_remote_address)
 
 # ── App ───────────────────────────────────────────────────────────────────────
 app = FastAPI(
@@ -46,6 +43,8 @@ app.include_router(documents.router)
 app.include_router(documents.status_router)
 app.include_router(query.router)
 app.include_router(conversations.router)
+app.include_router(feedback.router)
+app.include_router(api_keys.router)
 
 
 @app.get("/health")

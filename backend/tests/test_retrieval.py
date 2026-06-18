@@ -50,8 +50,8 @@ class TestRetrieveTopChunks:
         mock_result = MagicMock()
         mock_result.fetchall.return_value = [mock_row_1, mock_row_2]
 
-        with patch("app.services.retrieval._embeddings") as mock_embed:
-            mock_embed.aembed_query = AsyncMock(return_value=fake_embedding)
+        with patch("app.services.retrieval.get_embeddings") as mock_embed:
+            mock_embed.return_value.aembed_query = AsyncMock(return_value=fake_embedding)
 
             # Patch db.execute for the raw SQL query
             original_execute = db.execute
@@ -83,8 +83,8 @@ class TestRetrieveTopChunks:
         mock_result = MagicMock()
         mock_result.fetchall.return_value = []
 
-        with patch("app.services.retrieval._embeddings") as mock_embed:
-            mock_embed.aembed_query = AsyncMock(return_value=fake_embedding)
+        with patch("app.services.retrieval.get_embeddings") as mock_embed:
+            mock_embed.return_value.aembed_query = AsyncMock(return_value=fake_embedding)
 
             with patch.object(db, 'execute', return_value=mock_result):
                 from app.services.retrieval import retrieve_top_chunks
@@ -109,8 +109,8 @@ class TestRetrieveTopChunks:
                 captured_params.update(params)
             return mock_result
 
-        with patch("app.services.retrieval._embeddings") as mock_embed:
-            mock_embed.aembed_query = AsyncMock(return_value=fake_embedding)
+        with patch("app.services.retrieval.get_embeddings") as mock_embed:
+            mock_embed.return_value.aembed_query = AsyncMock(return_value=fake_embedding)
 
             with patch.object(db, 'execute', side_effect=_capture_execute):
                 from app.services.retrieval import retrieve_top_chunks

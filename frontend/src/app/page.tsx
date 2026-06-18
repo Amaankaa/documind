@@ -19,7 +19,8 @@ import {
   UploadCloud,
   Zap,
 } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion, useScroll, useSpring } from "framer-motion";
+import { DocTypeMarquee } from "@/components/brand/DocTypeMarquee";
 
 const navItems = [
   { href: "#cockpit", label: "Cockpit" },
@@ -88,23 +89,34 @@ const proofPoints = [
 ];
 
 export default function LandingPage() {
+  const { scrollYProgress } = useScroll();
+  const scaleX = useSpring(scrollYProgress, {
+    stiffness: 120,
+    damping: 30,
+    restDelta: 0.001,
+  });
+
   return (
-    <div className="min-h-screen overflow-hidden bg-[#f5efe3] text-[#14110f]">
+    <div className="min-h-screen overflow-hidden bg-canvas text-ink">
+      <motion.div
+        style={{ scaleX }}
+        className="fixed inset-x-0 top-0 z-[60] h-1.5 origin-left bg-flame"
+      />
       <div className="pointer-events-none fixed inset-0 z-0">
         <motion.div
           animate={{ x: [0, 80, 10, 0], y: [0, 30, 90, 0], scale: [1, 1.08, 0.96, 1] }}
           transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute -left-40 top-0 h-[34rem] w-[34rem] rounded-full bg-[#ff7a59]/30 blur-[90px]"
+          className="absolute -left-40 top-0 h-[34rem] w-[34rem] rounded-full bg-ember/30 blur-[90px]"
         />
         <motion.div
           animate={{ x: [0, -60, -20, 0], y: [0, 80, 20, 0], scale: [1, 0.95, 1.08, 1] }}
           transition={{ duration: 22, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute right-[-10rem] top-20 h-[36rem] w-[36rem] rounded-full bg-[#7c3aed]/25 blur-[110px]"
+          className="absolute right-[-10rem] top-20 h-[36rem] w-[36rem] rounded-full bg-violet/25 blur-[110px]"
         />
         <motion.div
           animate={{ x: [0, 45, -30, 0], y: [0, -70, -20, 0], scale: [1, 1.12, 0.98, 1] }}
           transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute bottom-[-12rem] left-1/3 h-[32rem] w-[32rem] rounded-full bg-[#19c6a3]/25 blur-[100px]"
+          className="absolute bottom-[-12rem] left-1/3 h-[32rem] w-[32rem] rounded-full bg-teal/25 blur-[100px]"
         />
         <div className="absolute inset-0 bg-[linear-gradient(rgba(20,17,15,0.055)_1px,transparent_1px),linear-gradient(90deg,rgba(20,17,15,0.055)_1px,transparent_1px)] bg-[size:38px_38px]" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0,rgba(245,239,227,0.86)_68%)]" />
@@ -116,9 +128,9 @@ export default function LandingPage() {
         transition={{ duration: 0.65, ease: "easeOut" }}
         className="fixed inset-x-0 top-0 z-50 px-4 pt-4"
       >
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between rounded-full border border-[#14110f]/10 bg-[#fffaf1]/75 px-4 shadow-[0_20px_80px_rgba(20,17,15,0.12)] backdrop-blur-2xl md:px-6">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between rounded-full border border-ink/10 bg-cream/75 px-4 shadow-[0_20px_80px_rgba(20,17,15,0.12)] backdrop-blur-2xl md:px-6">
           <Link href="/" className="flex items-center gap-3">
-            <span className="grid size-10 place-items-center rounded-full bg-[#14110f] text-[#fffaf1] shadow-[0_8px_24px_rgba(20,17,15,0.25)]">
+            <span className="grid size-10 place-items-center rounded-full bg-ink text-cream shadow-[0_8px_24px_rgba(20,17,15,0.25)]">
               <BrainCircuit className="size-5" />
             </span>
             <span className="font-heading text-lg font-bold tracking-tight">
@@ -126,12 +138,12 @@ export default function LandingPage() {
             </span>
           </Link>
 
-          <div className="hidden items-center gap-7 text-sm font-semibold text-[#14110f]/60 md:flex">
+          <div className="hidden items-center gap-7 text-sm font-semibold text-ink/60 md:flex">
             {navItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
-                className="transition-colors hover:text-[#14110f]"
+                className="transition-colors hover:text-ink"
               >
                 {item.label}
               </Link>
@@ -141,13 +153,13 @@ export default function LandingPage() {
           <div className="flex items-center gap-2">
             <Link
               href="/sign-in"
-              className="hidden rounded-full px-4 py-2 text-sm font-semibold text-[#14110f]/70 transition hover:bg-[#14110f]/5 hover:text-[#14110f] sm:block"
+              className="hidden rounded-full px-4 py-2 text-sm font-semibold text-ink/70 transition hover:bg-ink/5 hover:text-ink sm:block"
             >
               Sign in
             </Link>
             <Link
               href="/sign-up"
-              className="rounded-full bg-[#14110f] px-5 py-2.5 text-sm font-bold text-[#fffaf1] shadow-[0_12px_34px_rgba(20,17,15,0.25)] transition hover:-translate-y-0.5 hover:bg-[#2a211e]"
+              className="rounded-full bg-ink px-5 py-2.5 text-sm font-bold text-cream shadow-[0_12px_34px_rgba(20,17,15,0.25)] transition hover:-translate-y-0.5 hover:bg-ink-soft"
             >
               Start free
             </Link>
@@ -163,24 +175,24 @@ export default function LandingPage() {
             transition={{ duration: 0.7, ease: "easeOut" }}
             className="max-w-3xl"
           >
-            <div className="mb-7 inline-flex rotate-[-1deg] items-center gap-2 rounded-full border border-[#14110f]/10 bg-white/70 px-4 py-2 text-xs font-black uppercase tracking-[0.25em] text-[#14110f]/70 shadow-[0_12px_40px_rgba(20,17,15,0.08)]">
-              <Sparkles className="size-4 text-[#ff5c35]" />
+            <div className="mb-7 inline-flex rotate-[-1deg] items-center gap-2 rounded-full border border-ink/10 bg-white/70 px-4 py-2 text-xs font-black uppercase tracking-[0.25em] text-ink/70 shadow-[0_12px_40px_rgba(20,17,15,0.08)]">
+              <Sparkles className="size-4 text-flame" />
               Knowledge base with a pulse
             </div>
 
-            <h1 className="font-heading text-[clamp(4rem,11vw,8.9rem)] font-black leading-[0.82] tracking-[-0.085em] text-[#14110f]">
+            <h1 className="font-heading text-[clamp(4rem,11vw,8.9rem)] font-black leading-[0.82] tracking-[-0.085em] text-ink">
               Stop
               <motion.span
                 animate={{ rotate: [2, -1, 2], y: [0, -4, 0] }}
                 transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                className="mx-2 inline-block rounded-[2rem] bg-[#ffcc33] px-4 pb-3 pt-1 shadow-[8px_8px_0_#14110f]"
+                className="mx-2 inline-block rounded-[2rem] bg-sun px-4 pb-3 pt-1 shadow-[8px_8px_0_var(--color-ink)]"
               >
                 losing
               </motion.span>
               answers.
             </h1>
 
-            <p className="mt-8 max-w-2xl text-lg font-medium leading-8 text-[#3b312c]/75 md:text-xl">
+            <p className="mt-8 max-w-2xl text-lg font-medium leading-8 text-cocoa/75 md:text-xl">
               DocuMind turns scattered docs into a living, cited AI workspace.
               Upload the chaos, ask the hard questions, and get answers your
               team can actually trust.
@@ -189,14 +201,14 @@ export default function LandingPage() {
             <div className="mt-9 flex flex-col gap-3 sm:flex-row">
               <Link
                 href="/sign-up"
-                className="group inline-flex items-center justify-center gap-3 rounded-full bg-[#14110f] px-7 py-4 text-base font-black text-[#fffaf1] shadow-[0_18px_40px_rgba(20,17,15,0.28)] transition hover:-translate-y-1"
+                className="group inline-flex items-center justify-center gap-3 rounded-full bg-ink px-7 py-4 text-base font-black text-cream shadow-[0_18px_40px_rgba(20,17,15,0.28)] transition hover:-translate-y-1"
               >
                 Build your brain
                 <ArrowRight className="size-5 transition group-hover:translate-x-1" />
               </Link>
               <Link
                 href="/docs"
-                className="inline-flex items-center justify-center gap-3 rounded-full border-2 border-[#14110f] bg-[#fffaf1] px-7 py-4 text-base font-black text-[#14110f] transition hover:-translate-y-1 hover:bg-white"
+                className="inline-flex items-center justify-center gap-3 rounded-full border-2 border-ink bg-cream px-7 py-4 text-base font-black text-ink transition hover:-translate-y-1 hover:bg-white"
               >
                 Read the API
                 <FileText className="size-5" />
@@ -210,11 +222,11 @@ export default function LandingPage() {
                 return (
                   <div
                     key={signal.label}
-                    className="rounded-[1.5rem] border border-[#14110f]/10 bg-white/55 p-4 shadow-[0_12px_38px_rgba(20,17,15,0.08)] backdrop-blur"
+                    className="rounded-[1.5rem] border border-ink/10 bg-white/55 p-4 shadow-[0_12px_38px_rgba(20,17,15,0.08)] backdrop-blur"
                   >
-                    <Icon className="mb-3 size-5 text-[#6d28d9]" />
+                    <Icon className="mb-3 size-5 text-grape" />
                     <div className="text-xl font-black">{signal.value}</div>
-                    <div className="text-xs font-bold uppercase tracking-[0.16em] text-[#14110f]/45">
+                    <div className="text-xs font-bold uppercase tracking-[0.16em] text-ink/45">
                       {signal.label}
                     </div>
                   </div>
@@ -222,8 +234,8 @@ export default function LandingPage() {
               })}
             </div>
 
-            <div className="mt-8 flex flex-wrap items-center gap-2 text-xs font-black uppercase tracking-[0.18em] text-[#14110f]/55">
-              <span className="rounded-full bg-[#14110f] px-3 py-1.5 text-[#fffaf1]">
+            <div className="mt-8 flex flex-wrap items-center gap-2 text-xs font-black uppercase tracking-[0.18em] text-ink/55">
+              <span className="rounded-full bg-ink px-3 py-1.5 text-cream">
                 Live memory feed
               </span>
               <div className="flex gap-1">
@@ -237,7 +249,7 @@ export default function LandingPage() {
                       delay: dot * 0.13,
                       ease: "easeInOut",
                     }}
-                    className="size-2 rounded-full bg-[#ff5c35]"
+                    className="size-2 rounded-full bg-flame"
                   />
                 ))}
               </div>
@@ -254,13 +266,13 @@ export default function LandingPage() {
             <motion.div
               animate={{ y: [0, -16, 0], rotate: [-7, -4, -7] }}
               transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-              className="absolute -left-6 top-8 z-20 hidden rounded-[2rem] border-2 border-[#14110f] bg-[#a7f3d0] p-5 shadow-[10px_10px_0_#14110f] md:block"
+              className="absolute -left-6 top-8 z-20 hidden rounded-[2rem] border-2 border-ink bg-mint p-5 shadow-[10px_10px_0_var(--color-ink)] md:block"
             >
               <div className="mb-2 flex items-center gap-2 text-sm font-black">
                 <CircleDotDashed className="size-4 animate-spin [animation-duration:5s]" />
                 Live ingest
               </div>
-              <div className="space-y-2 text-xs font-bold text-[#14110f]/70">
+              <div className="space-y-2 text-xs font-bold text-ink/70">
                 <div className="rounded-full bg-white/70 px-3 py-2">
                   board_minutes.pdf
                 </div>
@@ -273,7 +285,7 @@ export default function LandingPage() {
             <motion.div
               animate={{ y: [0, 14, 0], rotate: [6, 3, 6] }}
               transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut" }}
-              className="absolute -right-3 bottom-12 z-20 hidden rounded-[2rem] border-2 border-[#14110f] bg-[#ff8a65] p-5 shadow-[10px_10px_0_#14110f] md:block"
+              className="absolute -right-3 bottom-12 z-20 hidden rounded-[2rem] border-2 border-ink bg-coral p-5 shadow-[10px_10px_0_var(--color-ink)] md:block"
             >
               <div className="mb-1 text-4xl font-black">0.82s</div>
               <div className="text-xs font-black uppercase tracking-[0.18em]">
@@ -296,21 +308,21 @@ export default function LandingPage() {
                     transform: `rotate(${index * 72}deg) translateX(18rem) rotate(-${index * 72}deg)`,
                   }}
                 >
-                  <span className="inline-flex -translate-x-1/2 -translate-y-1/2 items-center gap-1 rounded-full border border-[#14110f]/15 bg-white/70 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] shadow-lg backdrop-blur">
-                    <FileText className="size-3 text-[#6d28d9]" />
+                  <span className="inline-flex -translate-x-1/2 -translate-y-1/2 items-center gap-1 rounded-full border border-ink/15 bg-white/70 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] shadow-lg backdrop-blur">
+                    <FileText className="size-3 text-grape" />
                     {doc}
                   </span>
                 </motion.div>
               ))}
             </motion.div>
 
-            <div className="relative overflow-hidden rounded-[3rem] border-2 border-[#14110f] bg-[#fffaf1] p-4 shadow-[18px_18px_0_#14110f]">
-              <div className="rounded-[2.35rem] border border-[#14110f]/10 bg-[#14110f] p-4 text-[#fffaf1]">
+            <div className="relative overflow-hidden rounded-[3rem] border-2 border-ink bg-cream p-4 shadow-[18px_18px_0_var(--color-ink)]">
+              <div className="rounded-[2.35rem] border border-ink/10 bg-ink p-4 text-cream">
                 <div className="mb-4 flex items-center justify-between rounded-full border border-white/10 bg-white/5 px-4 py-3">
                   <div className="flex items-center gap-2">
-                    <span className="size-3 rounded-full bg-[#ff5c35]" />
-                    <span className="size-3 rounded-full bg-[#ffcc33]" />
-                    <span className="size-3 rounded-full bg-[#19c6a3]" />
+                    <span className="size-3 rounded-full bg-flame" />
+                    <span className="size-3 rounded-full bg-sun" />
+                    <span className="size-3 rounded-full bg-teal" />
                   </div>
                   <div className="text-xs font-bold uppercase tracking-[0.2em] text-white/40">
                     Memory cockpit
@@ -340,7 +352,7 @@ export default function LandingPage() {
                                 delay: 0.55 + index * 0.15,
                                 ease: "easeOut",
                               }}
-                              className="h-full rounded-full bg-[#ffcc33]"
+                              className="h-full rounded-full bg-sun"
                             />
                           </div>
                         </div>
@@ -348,10 +360,10 @@ export default function LandingPage() {
                     )}
                   </div>
 
-                  <div className="rounded-[2rem] bg-[#fffaf1] p-5 text-[#14110f]">
-                    <div className="mb-5 flex items-center gap-3 rounded-2xl border border-[#14110f]/10 bg-white px-4 py-3 shadow-sm">
-                      <Search className="size-5 text-[#6d28d9]" />
-                      <span className="text-sm font-bold text-[#14110f]/70">
+                  <div className="rounded-[2rem] bg-cream p-5 text-ink">
+                    <div className="mb-5 flex items-center gap-3 rounded-2xl border border-ink/10 bg-white px-4 py-3 shadow-sm">
+                      <Search className="size-5 text-grape" />
+                      <span className="text-sm font-bold text-ink/70">
                         Which vendor contracts renew this quarter?
                       </span>
                     </div>
@@ -366,9 +378,9 @@ export default function LandingPage() {
                           ],
                         }}
                         transition={{ duration: 2.6, repeat: Infinity, ease: "easeInOut" }}
-                        className="rounded-[1.5rem] bg-[#14110f] p-4 text-[#fffaf1]"
+                        className="rounded-[1.5rem] bg-ink p-4 text-cream"
                       >
-                        <div className="mb-3 flex items-center gap-2 text-xs font-black uppercase tracking-[0.18em] text-[#ffcc33]">
+                        <div className="mb-3 flex items-center gap-2 text-xs font-black uppercase tracking-[0.18em] text-sun">
                           <MessageSquareQuote className="size-4" />
                           Answer with proof
                         </div>
@@ -380,12 +392,12 @@ export default function LandingPage() {
                       </motion.div>
 
                       <div className="grid grid-cols-2 gap-3 text-xs font-bold">
-                        <div className="rounded-2xl border border-[#14110f]/10 bg-[#f5efe3] p-3">
-                          <div className="text-[#14110f]/45">Source</div>
+                        <div className="rounded-2xl border border-ink/10 bg-canvas p-3">
+                          <div className="text-ink/45">Source</div>
                           vendor_master.csv
                         </div>
-                        <div className="rounded-2xl border border-[#14110f]/10 bg-[#f5efe3] p-3">
-                          <div className="text-[#14110f]/45">Citation</div>
+                        <div className="rounded-2xl border border-ink/10 bg-canvas p-3">
+                          <div className="text-ink/45">Citation</div>
                           chunk 14, row 82
                         </div>
                       </div>
@@ -395,6 +407,13 @@ export default function LandingPage() {
               </div>
             </div>
           </motion.div>
+        </section>
+
+        <section className="mx-auto max-w-7xl px-6 py-10">
+          <p className="mb-6 text-center text-xs font-black uppercase tracking-[0.28em] text-ink/45">
+            Every format your team buries answers in
+          </p>
+          <DocTypeMarquee />
         </section>
 
         <section className="mx-auto max-w-7xl px-6 py-16">
@@ -409,15 +428,15 @@ export default function LandingPage() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true, margin: "-80px" }}
                   transition={{ duration: 0.55, delay: index * 0.08 }}
-                  className="group rounded-[2.25rem] border-2 border-[#14110f] bg-[#fffaf1] p-7 shadow-[10px_10px_0_rgba(20,17,15,0.95)] transition hover:-translate-y-2 hover:shadow-[16px_16px_0_rgba(20,17,15,0.95)]"
+                  className="group rounded-[2.25rem] border-2 border-ink bg-cream p-7 shadow-[10px_10px_0_rgba(20,17,15,0.95)] transition hover:-translate-y-2 hover:shadow-[16px_16px_0_rgba(20,17,15,0.95)]"
                 >
-                  <div className="mb-8 grid size-14 place-items-center rounded-2xl bg-[#14110f] text-[#fffaf1] transition group-hover:rotate-6">
+                  <div className="mb-8 grid size-14 place-items-center rounded-2xl bg-ink text-cream transition group-hover:rotate-6">
                     <Icon className="size-7" />
                   </div>
                   <h3 className="mb-3 font-heading text-2xl font-black tracking-tight">
                     {card.title}
                   </h3>
-                  <p className="leading-7 text-[#3b312c]/72">
+                  <p className="leading-7 text-cocoa/72">
                     {card.description}
                   </p>
                 </motion.div>
@@ -431,7 +450,7 @@ export default function LandingPage() {
           className="mx-auto grid max-w-7xl gap-10 px-6 py-24 lg:grid-cols-[0.8fr_1.2fr]"
         >
           <div>
-            <div className="mb-5 inline-flex rounded-full bg-[#14110f] px-4 py-2 text-xs font-black uppercase tracking-[0.24em] text-[#fffaf1]">
+            <div className="mb-5 inline-flex rounded-full bg-ink px-4 py-2 text-xs font-black uppercase tracking-[0.24em] text-cream">
               How it moves
             </div>
             <h2 className="font-heading text-5xl font-black leading-[0.95] tracking-[-0.05em] md:text-7xl">
@@ -447,14 +466,14 @@ export default function LandingPage() {
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true, margin: "-80px" }}
                 transition={{ duration: 0.55, delay: index * 0.08 }}
-                className="grid gap-5 rounded-[2rem] border-2 border-[#14110f] bg-white/70 p-6 shadow-[8px_8px_0_#14110f] backdrop-blur md:grid-cols-[5rem_1fr]"
+                className="grid gap-5 rounded-[2rem] border-2 border-ink bg-white/70 p-6 shadow-[8px_8px_0_var(--color-ink)] backdrop-blur md:grid-cols-[5rem_1fr]"
               >
-                <div className="font-heading text-4xl font-black text-[#ff5c35]">
+                <div className="font-heading text-4xl font-black text-flame">
                   {item.step}
                 </div>
                 <div>
                   <h3 className="mb-2 text-2xl font-black">{item.title}</h3>
-                  <p className="leading-7 text-[#3b312c]/72">{item.body}</p>
+                  <p className="leading-7 text-cocoa/72">{item.body}</p>
                 </div>
               </motion.div>
             ))}
@@ -462,10 +481,10 @@ export default function LandingPage() {
         </section>
 
         <section id="trust" className="mx-auto max-w-7xl px-6 py-20">
-          <div className="overflow-hidden rounded-[3rem] border-2 border-[#14110f] bg-[#14110f] p-6 text-[#fffaf1] shadow-[18px_18px_0_#ffcc33] md:p-10">
+          <div className="overflow-hidden rounded-[3rem] border-2 border-ink bg-ink p-6 text-cream shadow-[18px_18px_0_var(--color-sun)] md:p-10">
             <div className="grid gap-10 lg:grid-cols-[1fr_0.8fr] lg:items-center">
               <div>
-                <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-4 py-2 text-xs font-black uppercase tracking-[0.22em] text-[#a7f3d0]">
+                <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-4 py-2 text-xs font-black uppercase tracking-[0.22em] text-mint">
                   <LockKeyhole className="size-4" />
                   Built for guarded knowledge
                 </div>
@@ -485,7 +504,7 @@ export default function LandingPage() {
                     key={point}
                     className="rounded-[1.5rem] border border-white/10 bg-white/[0.06] p-4"
                   >
-                    <CheckCircle2 className="mb-4 size-6 text-[#a7f3d0]" />
+                    <CheckCircle2 className="mb-4 size-6 text-mint" />
                     <div className="font-bold">{point}</div>
                   </div>
                 ))}
@@ -495,8 +514,8 @@ export default function LandingPage() {
         </section>
 
         <section className="mx-auto max-w-7xl px-6 py-24">
-          <div className="relative overflow-hidden rounded-[3rem] border-2 border-[#14110f] bg-[#ffcc33] p-8 shadow-[18px_18px_0_#14110f] md:p-14">
-            <div className="absolute right-8 top-8 hidden rotate-12 rounded-full bg-[#ff5c35] px-5 py-3 text-sm font-black uppercase tracking-[0.18em] text-[#14110f] md:block">
+          <div className="relative overflow-hidden rounded-[3rem] border-2 border-ink bg-sun p-8 shadow-[18px_18px_0_var(--color-ink)] md:p-14">
+            <div className="absolute right-8 top-8 hidden rotate-12 rounded-full bg-flame px-5 py-3 text-sm font-black uppercase tracking-[0.18em] text-ink md:block">
               ship it
             </div>
             <FolderKanban className="mb-8 size-14" />
@@ -506,14 +525,14 @@ export default function LandingPage() {
             <div className="mt-9 flex flex-col gap-3 sm:flex-row">
               <Link
                 href="/sign-up"
-                className="inline-flex items-center justify-center gap-3 rounded-full bg-[#14110f] px-7 py-4 text-base font-black text-[#fffaf1] transition hover:-translate-y-1"
+                className="inline-flex items-center justify-center gap-3 rounded-full bg-ink px-7 py-4 text-base font-black text-cream transition hover:-translate-y-1"
               >
                 Create a knowledge base
                 <Zap className="size-5" />
               </Link>
               <Link
                 href="/docs"
-                className="inline-flex items-center justify-center gap-3 rounded-full border-2 border-[#14110f] bg-[#fffaf1] px-7 py-4 text-base font-black text-[#14110f] transition hover:-translate-y-1"
+                className="inline-flex items-center justify-center gap-3 rounded-full border-2 border-ink bg-cream px-7 py-4 text-base font-black text-ink transition hover:-translate-y-1"
               >
                 Explore docs
                 <ArrowRight className="size-5" />
@@ -524,19 +543,19 @@ export default function LandingPage() {
       </main>
 
       <footer className="relative z-10 px-6 pb-10">
-        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 border-t-2 border-[#14110f]/10 pt-8 text-sm font-bold text-[#14110f]/55 md:flex-row">
+        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 border-t-2 border-ink/10 pt-8 text-sm font-bold text-ink/55 md:flex-row">
           <div className="flex items-center gap-2">
             <BrainCircuit className="size-5" />
             DocuMind, 2026
           </div>
           <div className="flex gap-5">
-            <Link href="/docs" className="transition hover:text-[#14110f]">
+            <Link href="/docs" className="transition hover:text-ink">
               Docs
             </Link>
-            <Link href="/sign-in" className="transition hover:text-[#14110f]">
+            <Link href="/sign-in" className="transition hover:text-ink">
               Sign in
             </Link>
-            <Link href="/sign-up" className="transition hover:text-[#14110f]">
+            <Link href="/sign-up" className="transition hover:text-ink">
               Start free
             </Link>
           </div>

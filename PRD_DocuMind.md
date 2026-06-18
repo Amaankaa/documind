@@ -1,44 +1,56 @@
 # PRD — DocuMind: AI-Powered RAG Knowledge Base SaaS
 
-**Document Version:** 1.0  
-**Date:** April 22, 2026  
-**Status:** Ready for Development  
-**Target Upwork Skills:** Fullstack Web Development · AI Integration · RAG
+**Document Version:** 2.0
+**Date:** June 18, 2026
+**Status:** Built — feature-complete MVP, validated by a 71-test backend suite
+
+> **Changelog (v1.0 → v2.0):** Corrected the tech stack to reflect what was actually built (Google Gemini, not OpenAI/Pinecone). Marked shipped features as done and added features built beyond the original scope: public API keys, usage analytics, citation deep-view, URL ingestion with an SSRF guard, answer feedback, and full chat-history deletion. Removed throwaway portfolio framing.
 
 ---
 
 ## 1. Product Overview
 
 ### 1.1 Vision
-DocuMind is a multi-tenant SaaS platform that lets businesses upload their internal documents (PDFs, CSVs, Notion exports, Word files) and instantly get a secure, private AI assistant trained exclusively on that data — an internal ChatGPT that knows everything the company knows.
+DocuMind is a multi-tenant SaaS platform that lets businesses upload their internal documents (PDFs, CSVs, Word files, plain text, or a web page by URL) and instantly get a secure, private AI assistant grounded exclusively in that data — an internal ChatGPT that knows everything the company knows, and nothing it shouldn't.
 
 ### 1.2 Problem Statement
-Companies sit on massive amounts of knowledge locked in PDFs, SOPs, wikis, and spreadsheets. Employees waste hours searching for answers that are already documented. Generic AI tools like ChatGPT hallucinate and don't know company-specific data. There is no affordable, easy-to-deploy solution that lets a non-technical business owner point AI at their own documents.
+Companies sit on massive amounts of knowledge locked in PDFs, SOPs, wikis, and spreadsheets. Employees waste hours searching for answers that are already documented. Generic AI tools like ChatGPT have three hard limits for this use case:
+- **They don't know your private data.** Ask about your refund policy or last quarter's onboarding doc and the answer is "I don't know" — or a confident fabrication.
+- **They hallucinate without traceability.** There's no way to verify where an answer came from.
+- **They're a privacy risk.** Most teams can't paste internal documents into a public chatbot they don't control.
 
 ### 1.3 Solution
-DocuMind provides a clean web interface where users upload documents, which are then chunked, embedded, and stored in a vector database. Users can then ask natural language questions and receive accurate, cited answers pulled directly from their own documents.
+DocuMind provides a clean web interface where users upload documents, which are chunked, embedded, and stored in a vector database. Users ask natural-language questions and receive accurate, **cited** answers pulled directly from their own documents — every claim links back to the exact source passage. Data is isolated per tenant, and the same knowledge base can be queried programmatically via a public REST API.
 
 ### 1.4 Target Users
 - **Primary:** SMB owners, operations managers, HR leads, customer support teams
 - **Secondary:** Agencies building white-label knowledge tools for clients
 - **Tertiary:** Individual consultants managing large document libraries
 
-### 1.5 Upwork Portfolio Value
-- Live demo URL to share in proposals
-- Showcases: LangChain, OpenAI, pgvector/Pinecone, Next.js, FastAPI, multi-tenancy, streaming
-- One project covers 3 Upwork service categories simultaneously
+### 1.5 Differentiation vs. Generic AI
+| | ChatGPT (generic) | DocuMind |
+|---|---|---|
+| Knows your private documents | ✗ | ✓ |
+| Answers cite the exact source passage | ✗ | ✓ |
+| Refuses to answer outside your data | ✗ | ✓ (guardrailed) |
+| Tenant-isolated / private | ✗ | ✓ |
+| Programmatic API into *your* knowledge | ✗ | ✓ |
+
+**Engineering showcase:** RAG pipeline, vector search, SSE streaming, multi-tenant isolation, async ingestion (Celery), public API with hashed keys, SSRF-hardened URL ingestion, and a usage analytics dashboard — one project spanning fullstack web, AI integration, and platform/security work.
 
 ---
 
 ## 2. Goals & Success Metrics
 
-| Goal | Metric | Target |
-|------|--------|--------|
-| Functional RAG pipeline | Query returns accurate sourced answer | < 3 sec response time |
-| Document ingestion | Supports PDF, CSV, DOCX, TXT | All 4 formats working |
-| Multi-tenancy | Isolated data per user/org | 0 data leakage between tenants |
-| Demo-readiness | Loom video + live URL | Deployed on Vercel + Railway |
-| Streaming UX | Answers stream token by token | Streaming via SSE/WebSocket |
+| Goal | Metric | Target | Status |
+|------|--------|--------|--------|
+| Functional RAG pipeline | Query returns accurate sourced answer | < 3 sec to first token | ✓ |
+| Document ingestion | Supports PDF, CSV, DOCX, TXT, URL | All formats working | ✓ |
+| Multi-tenancy | Isolated data per user/org | 0 data leakage between tenants | ✓ (tested) |
+| Streaming UX | Answers stream token by token | Streaming via SSE | ✓ |
+| Programmatic access | REST API authenticated by API key | Dual auth (JWT or key) | ✓ |
+| Deploy-readiness | Reproducible container stack | Docker Compose | ✓ |
+| Test coverage | Automated backend test suite | Core + new surface covered | ✓ (71 tests) |
 
 ---
 
@@ -47,68 +59,72 @@ DocuMind provides a clean web interface where users upload documents, which are 
 ### 3.1 Frontend
 | Layer | Technology |
 |-------|-----------|
-| Framework | Next.js 14 (App Router) |
-| Styling | TailwindCSS + shadcn/ui |
-| State Management | Zustand or React Context |
-| File Upload | react-dropzone |
-| Chat UI | Custom streaming component |
+| Framework | Next.js 16 (App Router, Turbopack) |
+| Language | TypeScript, React 19 |
+| Styling | Tailwind CSS v4 + shadcn/ui (neo-brutalist theme) |
+| Server state | TanStack Query |
+| Chat UI | Custom SSE streaming component |
 | Auth UI | Clerk (pre-built components) |
-| Charts/Stats | Recharts |
+| Charts | Recharts |
+| Toasts | sonner |
 
 ### 3.2 Backend
 | Layer | Technology |
 |-------|-----------|
-| API Framework | FastAPI (Python 3.11+) |
-| LLM Orchestration | LangChain |
-| LLM Provider | OpenAI (gpt-4o) with Anthropic fallback |
-| Embeddings | OpenAI text-embedding-3-small |
-| Vector Store | pgvector (primary) / Pinecone (optional) |
-| Document Parsing | PyMuPDF (PDF), python-docx, pandas (CSV) |
-| Task Queue | Celery + Redis (async ingestion) |
-| ORM | SQLAlchemy + Alembic |
+| API Framework | FastAPI (Python 3.11+, async) |
+| LLM Orchestration | LangChain (`langchain-google-genai`) |
+| LLM Provider | **Google Gemini 2.5 Flash** |
+| Embeddings | **Gemini embeddings** (1536-dim output) |
+| Vector Store | pgvector (PostgreSQL extension) |
+| Document Parsing | PyMuPDF (PDF), python-docx, pandas (CSV), BeautifulSoup4 + lxml (HTML/URL) |
+| Task Queue | Celery + Redis (async ingestion; optional inline mode for single-node) |
+| ORM / Migrations | SQLAlchemy 2.0 (async) + Alembic |
+| Rate Limiting | slowapi (Redis-backed) |
+| Package Manager | uv |
 
 ### 3.3 Infrastructure
 | Layer | Technology |
 |-------|-----------|
-| Database | PostgreSQL (Supabase or Railway) |
-| File Storage | Supabase Storage or AWS S3 |
-| Frontend Deploy | Vercel |
-| Backend Deploy | Railway or Render |
-| Auth | Clerk |
-| Caching | Redis (Upstash) |
-| Monitoring | Sentry (error tracking) |
+| Database | PostgreSQL 16 + pgvector |
+| File Storage | Supabase Storage **or** local disk (`USE_LOCAL_STORAGE`) |
+| Containerization | Docker Compose (backend, celery worker, postgres, redis) |
+| Auth | Clerk (JWT verified server-side via JWKS) |
+| Queue / Cache | Redis |
 
 ---
 
 ## 4. Core Features
 
-### 4.1 Feature List by Priority
+### 4.1 Shipped — MVP (formerly P0)
+- [x] User authentication (sign up, login, logout) via Clerk
+- [x] Organization/workspace creation
+- [x] Document upload (PDF, TXT, DOCX, CSV)
+- [x] Async document ingestion pipeline (chunking → embedding → storage)
+- [x] Ingestion progress indicator (processing / ready / failed states, with failure reason)
+- [x] Chat interface with streaming responses (SSE)
+- [x] Source citation in every answer (which doc, which chunk)
+- [x] Conversation history (stored per user/KB)
+- [x] Document library view (list, delete documents)
+- [x] Multi-tenancy (every query scoped to `kb_id` verified against `org_id`)
 
-#### P0 — Must Have (MVP)
-- [ ] User authentication (sign up, login, logout, email verification)
-- [ ] Organization/workspace creation
-- [ ] Document upload (PDF, TXT, DOCX, CSV — max 50MB per file)
-- [ ] Async document ingestion pipeline (chunking → embedding → storage)
-- [ ] Ingestion progress indicator (processing / ready states)
-- [ ] Chat interface with streaming responses
-- [ ] Source citation in every answer (which doc, which chunk)
-- [ ] Conversation history (stored per session)
-- [ ] Document library view (list, delete documents)
-- [ ] Multi-tenancy (each user/org has isolated vector namespace)
+### 4.2 Shipped — Post-MVP (formerly P1/P2)
+- [x] Multiple knowledge bases per organization
+- [x] **Usage analytics dashboard** — queries over time, top-queried documents, document status breakdown, positive/negative feedback ratio (Recharts)
+- [x] **Answer feedback** — 👍/👎 per assistant message, with toggle-to-clear, persistence across reloads, and live reflection in analytics
+- [x] **Public API keys** — generate `dm_`-prefixed keys (shown once, stored hashed with SHA-256); query the API with `X-API-Key` instead of a Clerk JWT; revocable
+- [x] **Web URL ingestion** — paste a URL, server fetches and extracts readable text, ingests like any document
+- [x] **Citation deep-view** — click a citation to read the cited passage in context (neighbouring chunks)
+- [x] **Chat-history management** — delete an individual conversation, or clear the entire history at once (scoped to the caller)
 
-#### P1 — Should Have (Post-MVP)
-- [ ] Multiple knowledge bases per organization
-- [ ] Invite team members to a workspace
-- [ ] Role-based access (Admin, Editor, Viewer)
-- [ ] Usage dashboard (tokens used, queries/day, top documents queried)
-- [ ] Re-ingestion (update a document without full re-upload)
-- [ ] Feedback on answers (thumbs up/down for RLHF data collection)
-- [ ] API key generation (let devs query via REST API)
+### 4.3 Security hardening (built)
+- [x] **SSRF guard on URL ingestion** — resolves the host and rejects private, loopback, link-local, reserved, multicast, and cloud-metadata (169.254.169.254) targets; non-`http(s)` schemes rejected at validation
+- [x] **Hashed API keys** — only a SHA-256 hash is stored; the raw secret is returned exactly once
+- [x] **Rate limiting** on the query endpoint (default 20/min)
 
-#### P2 — Nice to Have (Future)
-- [ ] Web URL ingestion (scrape a webpage and add to knowledge base)
-- [ ] Notion integration (OAuth → pull Notion pages)
-- [ ] Slack bot integration
+### 4.4 Future / Not Yet Built
+- [ ] Invite team members + role-based access (Admin, Editor, Viewer)
+- [ ] Re-ingestion (update a document in place)
+- [ ] Notion / Slack integrations
 - [ ] White-label / custom domain per org
 - [ ] Billing via Stripe (free tier + paid plans)
 
@@ -120,39 +136,37 @@ DocuMind provides a clean web interface where users upload documents, which are 
 ```
 Landing Page
   → Sign Up (Clerk)
-  → Email Verification
   → Create Organization (name, slug)
-  → Upload First Document (drag & drop modal)
-  → Wait for ingestion (progress bar)
+  → Upload First Document (drag & drop) or paste a URL
+  → Wait for ingestion (status: processing → ready)
   → Redirect to Chat interface
-  → First query pre-filled: "What is this document about?"
 ```
 
 ### 5.2 Document Ingestion Flow
 ```
-User uploads file (UI)
-  → File stored in S3/Supabase Storage (raw)
-  → Celery task queued
-  → Document parsed by appropriate parser (PDF/DOCX/CSV/TXT)
-  → Text split into chunks (1000 tokens, 200 overlap)
-  → Each chunk embedded via OpenAI text-embedding-3-small
+User uploads file OR submits a URL (UI)
+  → File stored in Supabase Storage / local disk (raw)   [URL: server fetches + SSRF-checks the host]
+  → Celery task queued (or run inline if USE_CELERY=false)
+  → Parsed by the appropriate parser (PDF / DOCX / CSV / TXT / HTML)
+  → Text split into chunks (RecursiveCharacterTextSplitter)
+  → Each chunk embedded via Gemini embeddings
   → Embeddings + metadata stored in pgvector
-  → Document status updated to "ready"
-  → Frontend polls status → shows "Ready" badge
+  → Document status updated to "ready" (or "failed" with a reason)
+  → Frontend polls status → shows badge
 ```
 
 ### 5.3 Query Flow
 ```
-User types question in chat
-  → POST /api/query {question, kb_id, session_id}
-  → Backend embeds the question
-  → Vector similarity search → top-k chunks retrieved (k=5)
+User types question in chat (or calls the REST API with X-API-Key)
+  → POST /api/kb/:id/query {question, session_id?}
+  → Backend embeds the question (Gemini)
+  → Vector similarity search → top-k chunks retrieved
   → Prompt assembled: [System prompt] + [Retrieved context] + [User question]
-  → LangChain calls OpenAI gpt-4o (streaming=True)
+  → LangChain calls Gemini 2.5 Flash (streaming)
   → SSE stream returned to frontend
   → Frontend renders tokens as they arrive
-  → After stream ends, sources appended below answer
-  → Conversation turn saved to DB
+  → done event carries conversation_id, message_id, and sources
+  → Conversation turn saved; user can 👍/👎 the answer or open a citation in context
 ```
 
 ---
@@ -162,11 +176,11 @@ User types question in chat
 ### 6.1 Database Schema (PostgreSQL)
 
 ```sql
--- Users (managed by Clerk, mirrored here)
+-- Users (mirrored from Clerk)
 CREATE TABLE users (
-  id UUID PRIMARY KEY,
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   clerk_id VARCHAR UNIQUE NOT NULL,
-  email VARCHAR UNIQUE NOT NULL,
+  email VARCHAR,                       -- nullable (migration 0004)
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -193,8 +207,8 @@ CREATE TABLE documents (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   kb_id UUID REFERENCES knowledge_bases(id) ON DELETE CASCADE,
   filename VARCHAR NOT NULL,
-  file_type VARCHAR NOT NULL, -- pdf, docx, csv, txt
-  file_url VARCHAR NOT NULL,  -- S3/Supabase URL
+  file_type VARCHAR NOT NULL,          -- pdf | docx | csv | txt | url
+  file_url VARCHAR NOT NULL,           -- storage URL, or the source URL for url docs
   status VARCHAR DEFAULT 'processing', -- processing | ready | failed
   chunk_count INTEGER,
   created_at TIMESTAMPTZ DEFAULT NOW()
@@ -207,11 +221,10 @@ CREATE TABLE document_chunks (
   kb_id UUID REFERENCES knowledge_bases(id) ON DELETE CASCADE,
   content TEXT NOT NULL,
   chunk_index INTEGER NOT NULL,
-  embedding VECTOR(1536),  -- OpenAI text-embedding-3-small
+  embedding VECTOR(1536),              -- Gemini embeddings, 1536-dim
   metadata JSONB,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
-
 CREATE INDEX ON document_chunks USING ivfflat (embedding vector_cosine_ops);
 
 -- Conversations
@@ -227,9 +240,30 @@ CREATE TABLE conversations (
 CREATE TABLE messages (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   conversation_id UUID REFERENCES conversations(id) ON DELETE CASCADE,
-  role VARCHAR NOT NULL, -- user | assistant
+  role VARCHAR NOT NULL,               -- user | assistant
   content TEXT NOT NULL,
-  sources JSONB,  -- [{doc_id, filename, chunk_index, excerpt}]
+  sources JSONB,                       -- [{doc_id, filename, chunk_index, excerpt}]
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Feedback (migration 0003) — one rating per (user, message)
+CREATE TABLE feedback (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  message_id UUID REFERENCES messages(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES users(id),
+  rating VARCHAR NOT NULL,             -- positive | negative
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- API Keys (migration 0005) — programmatic access, hashed
+CREATE TABLE api_keys (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  org_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
+  name VARCHAR NOT NULL,
+  prefix VARCHAR NOT NULL,             -- non-secret display prefix (e.g. dm_abcd...)
+  key_hash VARCHAR UNIQUE NOT NULL,    -- SHA-256 of the raw key
+  last_used_at TIMESTAMPTZ,
+  revoked_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 ```
@@ -239,36 +273,48 @@ CREATE TABLE messages (
 ## 7. API Endpoints
 
 ### 7.1 Auth
-All endpoints require `Authorization: Bearer <clerk_jwt>` header.
+Endpoints accept **either** a Clerk JWT (`Authorization: Bearer <jwt>`) **or**, on the query endpoint, a programmatic key (`X-API-Key: dm_...`).
 
 ### 7.2 Endpoint Reference
 
 ```
 # Knowledge Bases
-POST   /api/kb                    → Create knowledge base
-GET    /api/kb                    → List org knowledge bases
-DELETE /api/kb/:id                → Delete knowledge base
+POST   /api/kb                          → Create knowledge base
+GET    /api/kb                          → List org knowledge bases
+DELETE /api/kb/:id                      → Delete knowledge base
 
 # Documents
-POST   /api/kb/:id/documents      → Upload document (multipart/form-data)
-GET    /api/kb/:id/documents      → List documents in KB
-DELETE /api/kb/:id/documents/:doc_id → Delete document
-
-# Ingestion Status
-GET    /api/documents/:doc_id/status → Poll ingestion status
+POST   /api/kb/:id/documents            → Upload document (multipart/form-data)
+POST   /api/kb/:id/documents/url        → Ingest a web page by URL (SSRF-guarded)
+GET    /api/kb/:id/documents            → List documents in KB
+DELETE /api/kb/:id/documents/:doc_id    → Delete document
+GET    /api/kb/:id/documents/:doc_id/context  → Cited passage + neighbours (deep-view)
+GET    /api/documents/:doc_id/status    → Poll ingestion status (org-scoped)
 
 # Chat / Query
-POST   /api/kb/:id/query          → Query knowledge base (streaming SSE)
-  Body: { question: string, session_id: string }
-  Response: text/event-stream
+POST   /api/kb/:id/query                → Query knowledge base (streaming SSE)
+  Body: { question: string, session_id?: string }
+  Auth: Clerk JWT or X-API-Key
+  done event: { conversation_id, message_id, sources }
 
 # Conversations
-GET    /api/kb/:id/conversations  → List conversations
-GET    /api/conversations/:id     → Get conversation with messages
-DELETE /api/conversations/:id     → Delete conversation
+GET    /api/kb/:id/conversations        → List conversations in a KB
+GET    /api/conversations               → List all the caller's conversations
+GET    /api/conversations/:id           → Get conversation with messages (+ caller's feedback)
+DELETE /api/conversations/:id           → Delete one conversation
+DELETE /api/conversations               → Clear the caller's entire chat history
 
-# Usage
-GET    /api/org/usage             → Token usage, query counts
+# Feedback
+POST   /api/kb/:id/feedback             → Upsert 👍/👎 for a message
+DELETE /api/kb/:id/feedback/:message_id → Clear the caller's feedback (un-vote)
+
+# API Keys
+GET    /api/api-keys                    → List active keys (secret never returned)
+POST   /api/api-keys                    → Create a key (raw secret returned once)
+DELETE /api/api-keys/:id                → Revoke a key
+
+# Analytics
+GET    /api/org/analytics               → Queries over time, top docs, status mix, feedback
 ```
 
 ---
@@ -276,48 +322,43 @@ GET    /api/org/usage             → Token usage, query counts
 ## 8. UI/UX Specifications
 
 ### 8.1 Pages & Routes
-
 | Route | Page | Description |
 |-------|------|-------------|
-| `/` | Landing Page | Hero, features, pricing, CTA |
-| `/sign-up` | Sign Up | Clerk component |
-| `/sign-in` | Sign In | Clerk component |
-| `/onboarding` | Onboarding | Create org + upload first doc |
-| `/dashboard` | Dashboard | KB list, usage stats |
-| `/kb/:id` | Knowledge Base | Document list + chat interface |
-| `/kb/:id/docs` | Documents | Upload, manage documents |
-| `/kb/:id/chat` | Chat | Full-screen chat with KB |
-| `/settings` | Settings | Org settings, team, API keys |
+| `/` | Landing Page | Hero, features, CTA |
+| `/sign-up`, `/sign-in` | Auth | Clerk components |
+| `/onboarding` | Onboarding | Create org + first document |
+| `/dashboard` | Dashboard | KB list, quick actions |
+| `/kb/:id/chat` | Chat | Streaming chat with the KB |
+| `/kb/:id/docs` | Documents | Upload (file or URL), manage documents |
+| `/analytics` | Analytics | Usage charts |
+| `/settings` | Settings | Org settings + API keys |
 
-### 8.2 Chat Interface Requirements
-- Message input with `Shift+Enter` for newline, `Enter` to send
-- Streaming tokens rendered in real time with cursor animation
-- Each assistant message has collapsible **Sources** section
-- Sources show: document name, page/chunk number, highlighted excerpt
-- Copy button on every assistant message
-- Thumbs up / thumbs down feedback buttons
-- Conversation sidebar (list of past sessions)
-- "New Chat" button clears context, starts fresh session
+### 8.2 Chat Interface
+- `Shift+Enter` newline, `Enter` send
+- Streaming tokens rendered live with a cursor animation
+- Collapsible **Sources** section per assistant message; clicking a source opens the cited passage in context
+- Copy button + 👍/👎 feedback (click again to clear) on every assistant message
+- Conversation sidebar: hover to delete a single chat; "Clear all" wipes history (with confirmation)
 
-### 8.3 Document Library Requirements
-- Drag-and-drop upload zone (accepts multiple files)
-- Upload queue with per-file progress bars
-- Status badges: `Processing`, `Ready`, `Failed`
-- File size, upload date, chunk count shown per document
-- Delete with confirmation modal
+### 8.3 Document Library
+- Drag-and-drop upload **and** a URL field for web ingestion
+- Status badges: `Processing`, `Ready`, `Failed` (failed shows the reason)
+- Per-document type icon (incl. a globe for URL docs), date, chunk count
+- Delete with confirmation
 
 ---
 
 ## 9. Security Requirements
 
-- [ ] All API routes validate Clerk JWT — no unauthenticated access
-- [ ] Vector queries scoped to `kb_id` which is verified against `org_id` → no cross-tenant data leakage
-- [ ] OpenAI API key stored as server-side env variable — never exposed to frontend
-- [ ] File uploads validated for MIME type and size server-side (not just client-side)
-- [ ] File storage URLs are signed/private — not publicly guessable
-- [ ] Rate limiting on `/api/query` (e.g., 20 req/min per user) via Redis
-- [ ] SQL injection prevented via ORM (SQLAlchemy parameterized queries)
-- [ ] CORS restricted to known frontend origin
+- [x] All API routes require auth — Clerk JWT, or a valid API key on the query endpoint
+- [x] Vector queries scoped to `kb_id` verified against `org_id` → no cross-tenant data leakage (tested)
+- [x] Gemini API key + all secrets server-side only — never exposed to the frontend
+- [x] File uploads validated for type and size server-side
+- [x] **SSRF guard** on URL ingestion (blocks private/loopback/link-local/reserved/multicast/metadata IPs; non-http(s) schemes rejected)
+- [x] **API keys stored hashed** (SHA-256); raw secret shown once; revocable
+- [x] Rate limiting on `/api/query` via slowapi
+- [x] SQL injection prevented via SQLAlchemy parameterized queries
+- [x] CORS restricted to the configured frontend origin
 
 ---
 
@@ -325,63 +366,26 @@ GET    /api/org/usage             → Token usage, query counts
 
 ```
 documind/
-├── frontend/                     # Next.js 14
-│   ├── app/
-│   │   ├── (auth)/
-│   │   │   ├── sign-in/
-│   │   │   └── sign-up/
-│   │   ├── (app)/
-│   │   │   ├── dashboard/
-│   │   │   ├── kb/[id]/
-│   │   │   │   ├── page.tsx      # Chat view
-│   │   │   │   └── docs/
-│   │   │   ├── onboarding/
-│   │   │   └── settings/
-│   │   ├── layout.tsx
+├── frontend/                     # Next.js 16
+│   ├── src/app/
+│   │   ├── (auth)/sign-in, sign-up
+│   │   ├── (app)/dashboard, kb/[id]/{chat,docs}, analytics, onboarding, settings
 │   │   └── page.tsx              # Landing
-│   ├── components/
-│   │   ├── chat/
-│   │   │   ├── ChatWindow.tsx
-│   │   │   ├── MessageBubble.tsx
-│   │   │   ├── SourceCitation.tsx
-│   │   │   └── ChatInput.tsx
-│   │   ├── documents/
-│   │   │   ├── DropZone.tsx
-│   │   │   ├── DocumentCard.tsx
-│   │   │   └── IngestionStatus.tsx
+│   ├── src/components/
+│   │   ├── app/AppSidebar.tsx, ApiKeysPanel.tsx, ThemeToggle.tsx
+│   │   ├── chat/{MessageBubble,ChatInput}.tsx
 │   │   └── ui/                   # shadcn components
-│   ├── lib/
-│   │   ├── api.ts                # Axios/fetch wrappers
-│   │   └── stream.ts             # SSE streaming helper
-│   └── middleware.ts             # Clerk auth middleware
+│   └── src/lib/{api.ts, stream.ts, types.ts}
 │
 ├── backend/                      # FastAPI
 │   ├── app/
-│   │   ├── main.py
-│   │   ├── config.py             # Env vars via pydantic-settings
-│   │   ├── auth.py               # Clerk JWT verification
-│   │   ├── database.py           # SQLAlchemy engine
-│   │   ├── models/
-│   │   │   ├── user.py
-│   │   │   ├── organization.py
-│   │   │   ├── knowledge_base.py
-│   │   │   ├── document.py
-│   │   │   └── conversation.py
-│   │   ├── routers/
-│   │   │   ├── kb.py
-│   │   │   ├── documents.py
-│   │   │   ├── query.py
-│   │   │   └── conversations.py
-│   │   ├── services/
-│   │   │   ├── ingestion.py      # Document parse + embed + store
-│   │   │   ├── retrieval.py      # Vector search
-│   │   │   ├── llm.py            # LangChain chain assembly
-│   │   │   └── storage.py        # S3/Supabase file operations
-│   │   └── tasks/
-│   │       └── ingest_task.py    # Celery task
-│   ├── alembic/                  # DB migrations
-│   ├── requirements.txt
-│   └── Dockerfile
+│   │   ├── main.py, config.py, auth.py, database.py, limiter.py
+│   │   ├── models/__init__.py    # User, Org, KB, Document, Chunk, Conversation, Message, Feedback, ApiKey
+│   │   ├── routers/{kb,documents,query,conversations,feedback,api_keys,org}.py
+│   │   ├── services/{ingestion,retrieval,llm,embeddings,parsers,storage}.py
+│   │   └── tasks/ingest_task.py  # Celery task
+│   ├── alembic/versions/         # Migrations 0001–0005
+│   └── tests/                    # pytest (71 tests; SQLite harness)
 │
 ├── docker-compose.yml
 └── README.md
@@ -389,44 +393,12 @@ documind/
 
 ---
 
-## 11. Implementation Phases
+## 11. Implementation Phases (delivered)
 
-### Phase 1 — Core RAG Engine (Week 1)
-- [ ] Backend project scaffold (FastAPI + SQLAlchemy + Alembic)
-- [ ] PostgreSQL + pgvector setup
-- [ ] Document parsing service (PDF, DOCX, TXT, CSV)
-- [ ] Chunking strategy (RecursiveCharacterTextSplitter, 1000 tokens, 200 overlap)
-- [ ] Embedding pipeline (OpenAI text-embedding-3-small)
-- [ ] Vector storage in pgvector
-- [ ] Basic query endpoint (embed question → cosine similarity search → return top-5 chunks)
-- [ ] LangChain chain: retrieval + prompt + streaming LLM call
-- [ ] Test with Postman/pytest
-
-### Phase 2 — Auth & Multi-Tenancy (Week 1–2)
-- [ ] Clerk integration (backend JWT verification)
-- [ ] User, Organization, KnowledgeBase, Document DB models
-- [ ] All API routes scoped to org
-- [ ] File storage integration (Supabase Storage)
-- [ ] Celery + Redis async ingestion task
-
-### Phase 3 — Frontend (Week 2)
-- [ ] Next.js project scaffold + Clerk auth
-- [ ] Landing page
-- [ ] Onboarding flow
-- [ ] Document upload UI (DropZone, progress, status polling)
-- [ ] Chat interface with SSE streaming
-- [ ] Source citations component
-- [ ] Conversation history sidebar
-
-### Phase 4 — Polish & Deploy (Week 3)
-- [ ] Usage dashboard (Recharts)
-- [ ] Error states, loading skeletons, empty states
-- [ ] Mobile responsive
-- [ ] Deploy backend to Railway (with Redis + Postgres add-ons)
-- [ ] Deploy frontend to Vercel
-- [ ] Environment variable setup
-- [ ] Record Loom demo (2 min)
-- [ ] Write GitHub README with screenshots
+- **Phase 1 — Core RAG Engine:** FastAPI + SQLAlchemy + Alembic, pgvector, parsing (PDF/DOCX/TXT/CSV), chunking, Gemini embeddings, retrieval, LangChain + Gemini streaming. ✓
+- **Phase 2 — Auth & Multi-Tenancy:** Clerk JWT verification, org-scoped routes, Supabase/local storage, Celery + Redis ingestion. ✓
+- **Phase 3 — Frontend:** Next.js + Clerk, landing, onboarding, upload UI with status polling, SSE chat, citations, conversation sidebar. ✓
+- **Phase 4 — Platform & Hardening:** analytics dashboard, answer feedback, public API keys, URL ingestion + SSRF guard, citation deep-view, chat-history deletion, rate limiting, Docker Compose, 71-test suite. ✓
 
 ---
 
@@ -434,21 +406,28 @@ documind/
 
 ### Backend (.env)
 ```
-DATABASE_URL=postgresql://...
+DATABASE_URL=postgresql+asyncpg://...
+SYNC_DATABASE_URL=postgresql://...
 REDIS_URL=redis://...
-OPENAI_API_KEY=sk-...
+GEMINI_API_KEY=...
+EMBEDDING_MODEL=gemini-embedding-2-preview
+CHAT_MODEL=gemini-2.5-flash
+EMBEDDING_DIMENSIONS=1536
 CLERK_SECRET_KEY=sk_...
 CLERK_JWKS_URL=https://...
-SUPABASE_URL=https://...
+SUPABASE_URL=https://...            # or USE_LOCAL_STORAGE=true
 SUPABASE_SERVICE_KEY=...
-ALLOWED_ORIGINS=https://documind.vercel.app
+USE_LOCAL_STORAGE=false
+USE_CELERY=true
+QUERY_RATE_LIMIT=20/minute
+ALLOWED_ORIGINS=["http://localhost:3000"]
 ```
 
 ### Frontend (.env.local)
 ```
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_...
 CLERK_SECRET_KEY=sk_...
-NEXT_PUBLIC_API_URL=https://api.yourdomain.com
+NEXT_PUBLIC_API_URL=http://localhost:8000
 NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
 NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
 NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL=/dashboard
@@ -461,15 +440,15 @@ NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/onboarding
 
 ### 13.1 System Prompt Template
 ```
-You are a helpful AI assistant for {org_name}. You answer questions 
-exclusively based on the provided context documents. 
+You are a helpful AI assistant for {org_name}. You answer questions
+exclusively based on the provided context documents.
 
 Rules:
-- If the answer is not found in the context, say: 
+- If the answer is not found in the context, say:
   "I couldn't find that in the uploaded documents."
 - Never make up information or use outside knowledge.
 - Always be concise and direct.
-- When citing information, reference the document name naturally 
+- When citing information, reference the document name naturally
   (e.g., "According to the Employee Handbook...").
 - If asked something outside the documents, politely redirect.
 ```
@@ -482,24 +461,25 @@ Context Documents:
 ---
 User Question: {question}
 
-Answer based only on the context above. Include the source document 
+Answer based only on the context above. Include the source document
 name when relevant.
 ```
 
 ---
 
-## 14. Demo Script (for Loom / Upwork Portfolio)
+## 14. Demo Script
 
-1. Open the app, show the landing page (15 sec)
-2. Sign up → create org "Acme Corp" (30 sec)
-3. Upload a real company-style PDF (e.g., a product manual or HR policy doc)
-4. Watch the processing spinner → status flips to "Ready"
-5. Ask: *"What is the return policy?"* — show streaming answer with source citation
-6. Ask: *"Summarize the key points of this document"*
-7. Ask something NOT in the doc — show the "not found" guardrail response
-8. Show conversation history sidebar
-9. End with deployed URL + GitHub repo link
+1. Open the app, show the landing page
+2. Sign up → create org "Acme Corp"
+3. Upload a company-style PDF **and** ingest a public web page by URL
+4. Watch status flip from "Processing" to "Ready"
+5. Ask *"What is the return policy?"* — show the streaming answer, then click a citation to read it in context
+6. 👍 the answer, then open **Analytics** to show it reflected live
+7. Ask something not in the docs — show the "not found" guardrail
+8. Open **Settings**, create an API key, and hit `/api/kb/:id/query` with `X-API-Key` from the terminal
+9. Delete a chat from the sidebar; show "Clear all" wiping history
+10. End with the GitHub repo link
 
 ---
 
-*End of PRD — DocuMind v1.0*
+*End of PRD — DocuMind v2.0*

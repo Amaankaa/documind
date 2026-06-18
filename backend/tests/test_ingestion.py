@@ -27,7 +27,7 @@ class TestRunIngestion:
         fake_embedding = [0.1] * 10
 
         with patch("app.services.ingestion.download_file", new=AsyncMock(return_value=fake_text.encode())), \
-             patch("app.services.ingestion._embeddings") as mock_embed, \
+             patch("app.services.ingestion.get_embeddings") as mock_embed, \
              patch("app.services.ingestion._splitter") as mock_splitter:
 
             mock_splitter.split_text.return_value = [
@@ -35,7 +35,7 @@ class TestRunIngestion:
                 "chunk two text",
                 "chunk three text",
             ]
-            mock_embed.aembed_documents = AsyncMock(
+            mock_embed.return_value.aembed_documents = AsyncMock(
                 side_effect=[[fake_embedding]] * 3
             )
 
@@ -61,7 +61,7 @@ class TestRunIngestion:
         fake_id = uuid.uuid4()
 
         with patch("app.services.ingestion.download_file", new=AsyncMock()), \
-             patch("app.services.ingestion._embeddings", new=MagicMock()), \
+             patch("app.services.ingestion.get_embeddings", new=MagicMock()), \
              patch("app.services.ingestion._splitter", new=MagicMock()):
 
             from app.services.ingestion import run_ingestion
@@ -77,7 +77,7 @@ class TestRunIngestion:
         doc = await make_document(kb, filename="data.txt", file_type="txt", status="processing")
 
         with patch("app.services.ingestion.download_file", new=AsyncMock(side_effect=ConnectionError("network down"))), \
-             patch("app.services.ingestion._embeddings", new=MagicMock()), \
+             patch("app.services.ingestion.get_embeddings", new=MagicMock()), \
              patch("app.services.ingestion._splitter", new=MagicMock()):
 
             from app.services.ingestion import run_ingestion
@@ -109,12 +109,12 @@ class TestRunIngestion:
         fake_text = "Some text content for chunking."
 
         with patch("app.services.ingestion.download_file", new=AsyncMock(return_value=fake_text.encode())), \
-             patch("app.services.ingestion._embeddings") as mock_embed, \
+             patch("app.services.ingestion.get_embeddings") as mock_embed, \
              patch("app.services.ingestion._splitter") as mock_splitter, \
              patch("app.services.ingestion._set_progress", side_effect=_capture_progress):
 
             mock_splitter.split_text.return_value = ["chunk"]
-            mock_embed.aembed_documents = AsyncMock(return_value=[[0.1] * 10])
+            mock_embed.return_value.aembed_documents = AsyncMock(return_value=[[0.1] * 10])
 
             from app.services.ingestion import run_ingestion
             await run_ingestion(doc.id, db)
@@ -134,11 +134,11 @@ class TestRunIngestion:
         doc = await make_document(kb, filename="policy.txt", file_type="txt", status="processing")
 
         with patch("app.services.ingestion.download_file", new=AsyncMock(return_value=b"Policy content here.")), \
-             patch("app.services.ingestion._embeddings") as mock_embed, \
+             patch("app.services.ingestion.get_embeddings") as mock_embed, \
              patch("app.services.ingestion._splitter") as mock_splitter:
 
             mock_splitter.split_text.return_value = ["policy chunk"]
-            mock_embed.aembed_documents = AsyncMock(return_value=[[0.5] * 10])
+            mock_embed.return_value.aembed_documents = AsyncMock(return_value=[[0.5] * 10])
 
             from app.services.ingestion import run_ingestion
             await run_ingestion(doc.id, db)

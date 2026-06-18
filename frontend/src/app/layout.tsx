@@ -1,8 +1,23 @@
 import type { Metadata } from "next";
+import { Archivo, Inter } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import { Toaster } from "@/components/ui/sonner";
 import { ReactQueryProvider } from "@/components/providers/ReactQueryProvider";
+import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import "./globals.css";
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-sans",
+  display: "swap",
+});
+
+const archivo = Archivo({
+  subsets: ["latin"],
+  weight: ["600", "700", "800", "900"],
+  variable: "--font-heading",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "DocuMind — AI Knowledge Base",
@@ -28,27 +43,30 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="h-full antialiased dark">
-      <body className="min-h-full flex flex-col font-sans bg-[#050505] text-white selection:bg-[#4F46E5] selection:text-white relative overflow-x-hidden">
-        {/* Global Dark Luxury Background Gradients */}
-        <div className="fixed inset-0 z-[-1] pointer-events-none">
-          <div className="absolute top-0 left-1/4 w-[800px] h-[800px] bg-[#4F46E5]/10 rounded-full blur-[120px]" />
-          <div className="absolute bottom-1/4 right-1/4 w-[600px] h-[600px] bg-[#8B5CF6]/10 rounded-full blur-[120px]" />
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1000px] h-[600px] bg-[#06B6D4]/5 rounded-full blur-[150px]" />
-          <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:64px_64px] [mask-image:radial-gradient(ellipse_at_center,black_40%,transparent_80%)]" />
-        </div>
-
-        <ClerkProvider
-          signInUrl={signInUrl}
-          signUpUrl={signUpUrl}
-          signInFallbackRedirectUrl={signInFallbackRedirectUrl}
-          signUpFallbackRedirectUrl={signUpFallbackRedirectUrl}
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className={`h-full antialiased ${inter.variable} ${archivo.variable}`}
+    >
+      <body className="relative flex min-h-full flex-col overflow-x-hidden bg-canvas font-sans text-ink selection:bg-sun selection:text-ink">
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="light"
+          enableSystem={false}
+          disableTransitionOnChange
         >
-          <ReactQueryProvider>
-            {children}
-          </ReactQueryProvider>
-          <Toaster richColors position="top-right" theme="dark" />
-        </ClerkProvider>
+          <ClerkProvider
+            signInUrl={signInUrl}
+            signUpUrl={signUpUrl}
+            signInFallbackRedirectUrl={signInFallbackRedirectUrl}
+            signUpFallbackRedirectUrl={signUpFallbackRedirectUrl}
+          >
+            <ReactQueryProvider>
+              {children}
+            </ReactQueryProvider>
+            <Toaster richColors position="top-right" />
+          </ClerkProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

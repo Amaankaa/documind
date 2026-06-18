@@ -119,9 +119,11 @@ async def client(db: AsyncSession) -> AsyncGenerator:
     from httpx import ASGITransport, AsyncClient as HttpxAsyncClient
 
     # Patch module-level singletons that hit external services
+    mock_embeddings_factory = MagicMock()
     patches = [
-        patch("app.services.retrieval._embeddings", new=MagicMock()),
-        patch("app.services.ingestion._embeddings", new=MagicMock()),
+        patch("app.services.embeddings.get_embeddings", new=mock_embeddings_factory),
+        patch("app.services.ingestion.get_embeddings", new=mock_embeddings_factory),
+        patch("app.services.retrieval.get_embeddings", new=mock_embeddings_factory),
         patch("app.services.ingestion._splitter", new=MagicMock()),
     ]
     for p in patches:

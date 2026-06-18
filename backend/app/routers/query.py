@@ -6,33 +6,38 @@ from typing import AsyncIterator
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth import get_current_user_org
+from app.auth import get_user_org_flexible
+from app.config import get_settings
 from app.database import get_db
+from app.limiter import limiter
 from app.models import Conversation, KnowledgeBase, Message, Organization, User
 from app.services.llm import stream_rag_response
 from app.services.retrieval import retrieve_top_chunks
 
 router = APIRouter(prefix="/api/kb", tags=["query"])
 
+settings = get_settings()
+
 # Number of previous messages to include as conversation context
 HISTORY_WINDOW = 10
 
 
 class QueryRequest(BaseModel):
-    question: str
+    question: str = Field(..., min_length=1)
     session_id: str | None = None  # conversation id (UUID str) — None = new conversation
 
 
 @router.post("/{kb_id}/query")
+@limiter.limit(settings.query_rate_limit)
 async def query_kb(
     kb_id: uuid.UUID,
     body: QueryRequest,
     request: Request,
-    auth: tuple[User, Organization] = Depends(get_current_user_org),
+    auth: tuple[User, Organization] = Depends(get_user_org_flexible),
     db: AsyncSession = Depends(get_db),
 ):
     user, org = auth
@@ -50,9 +55,13 @@ async def query_kb(
     # Resolve or create conversation
     conversation: Conversation | None = None
     if body.session_id:
+        try:
+            session_uuid = uuid.UUID(body.session_id)
+        except ValueError:
+            raise HTTPException(status_code=422, detail="session_id must be a valid UUID")
         conv_result = await db.execute(
             select(Conversation).where(
-                Conversation.id == uuid.UUID(body.session_id),
+                Conversation.id == session_uuid,
                 Conversation.kb_id == kb_id,
                 Conversation.user_id == user.id,
             )
@@ -120,6 +129,12 @@ async def query_kb(
         db.add(assistant_msg)
         await db.commit()
 
-        yield f"data: {json.dumps({'done': True, 'conversation_id': str(conversation.id), 'sources': sources})}\n\n"
+        done_payload = {
+            "done": True,
+            "conversation_id": str(conversation.id),
+            "message_id": str(assistant_msg.id),
+            "sources": sources,
+        }
+        yield f"data: {json.dumps(done_payload)}\n\n"
 
     return StreamingResponse(_event_stream(), media_type="text/event-stream")

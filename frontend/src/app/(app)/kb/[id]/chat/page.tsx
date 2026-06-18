@@ -1,24 +1,50 @@
 "use client";
 
-import { use, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { Suspense, use, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
 import { useQueryClient } from "@tanstack/react-query";
+import { motion } from "framer-motion";
 import { Loader2, MessageSquare, Sparkles } from "lucide-react";
+import { toast } from "sonner";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { MessageBubble } from "@/components/chat/MessageBubble";
 import {
+  api,
   conversationsApi,
   type ConversationSummary,
   type MessageItem,
 } from "@/lib/api";
 import { consumeSSEStream } from "@/lib/stream";
-import type { Message } from "@/store/chat";
+import type { Message } from "@/lib/types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
+const SUGGESTED_PROMPTS = [
+  "Summarize the key points",
+  "What are the main risks?",
+  "List any deadlines or dates",
+  "Who are the parties involved?",
+];
+
 export default function ChatPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: kbId } = use(params);
+  return (
+    <Suspense fallback={<ChatLoading />}>
+      <ChatPageInner kbId={kbId} />
+    </Suspense>
+  );
+}
+
+function ChatLoading() {
+  return (
+    <div className="flex h-full items-center justify-center">
+      <Loader2 className="h-5 w-5 animate-spin text-ink/40" />
+    </div>
+  );
+}
+
+function ChatPageInner({ kbId }: { kbId: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
@@ -35,7 +61,24 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const shouldFocusInputRef = useRef(false);
   const loadedConversationIdRef = useRef<string | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
   const lastMessageContent = messages[messages.length - 1]?.content;
+
+  const handleFeedback = useCallback(
+    async (messageId: string, rating: "positive" | "negative" | null) => {
+      try {
+        if (rating === null) {
+          await api.delete(`/api/kb/${kbId}/feedback/${messageId}`);
+        } else {
+          await api.post(`/api/kb/${kbId}/feedback`, { message_id: messageId, rating });
+          toast.success("Thanks for the feedback!");
+        }
+      } catch {
+        toast.error("Couldn't save your feedback — please try again.");
+      }
+    },
+    [kbId],
+  );
 
   const syncConversationCache = useCallback(
     (conversation: ConversationSummary) => {
@@ -185,6 +228,9 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
       const token = await getToken();
       if (!token) throw new Error("Not authenticated");
 
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+
       await consumeSSEStream(
         `${API_URL}/api/kb/${kbId}/query`,
         { question, session_id: conversationId ?? undefined },
@@ -198,7 +244,7 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
             ),
           );
         },
-        ({ conversation_id, sources }) => {
+        ({ conversation_id, message_id, sources }) => {
           const createdAt = new Date().toISOString();
 
           setConversationId(conversation_id);
@@ -208,6 +254,9 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
               message.id === assistantId
                 ? {
                     ...message,
+                    // Adopt the real DB id so feedback (like/dislike) targets
+                    // the persisted message rather than a client-only UUID.
+                    id: message_id ?? message.id,
                     isStreaming: false,
                     sources,
                   }
@@ -215,6 +264,7 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
             ),
           );
           setIsSending(false);
+          abortControllerRef.current = null;
 
           syncConversationCache({
             id: conversation_id,
@@ -231,9 +281,12 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
           queryClient.invalidateQueries({ queryKey: ["conversations", "all"] });
         },
         (error) => {
+          if (error.name === "AbortError") return;
           showAssistantError(assistantId, error.message);
           setIsSending(false);
+          abortControllerRef.current = null;
         },
+        controller.signal,
       );
     } catch (error) {
       const message = error instanceof Error ? error.message : "Something went wrong";
@@ -257,37 +310,61 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
   };
 
   return (
-    <section className="flex h-full min-h-0 flex-col overflow-hidden bg-[#f5efe3]/60">
+    <section className="flex h-full min-h-0 flex-col overflow-hidden bg-canvas/60">
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-8">
         {historyLoading ? (
           <CenteredState>
-            <Loader2 className="h-5 w-5 animate-spin text-[#14110f]/40" />
-            <p className="text-sm font-semibold text-[#14110f]/45">
+            <Loader2 className="h-5 w-5 animate-spin text-ink/40" />
+            <p className="text-sm font-semibold text-ink/45">
               Loading conversation...
             </p>
           </CenteredState>
         ) : messages.length === 0 ? (
           <CenteredState>
-            <div className="grid size-16 place-items-center rounded-[1.5rem] border-2 border-[#14110f] bg-[#a7f3d0] shadow-[7px_7px_0_#14110f]">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, rotate: -4 }}
+              animate={{ opacity: 1, scale: 1, rotate: 0 }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+              className="grid size-16 place-items-center rounded-[1.5rem] border-2 border-ink bg-mint shadow-[7px_7px_0_var(--color-ink)]"
+            >
               <MessageSquare className="size-7" />
-            </div>
-            <div className="inline-flex items-center gap-2 rounded-full bg-[#14110f] px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-[#fffaf1]">
+            </motion.div>
+            <div className="inline-flex items-center gap-2 rounded-full bg-ink px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-cream">
               <Sparkles className="size-4" />
               Ready for evidence
             </div>
-            <p className="font-heading text-4xl font-black tracking-[-0.04em] text-[#14110f]">
+            <p className="font-heading text-4xl font-black tracking-[-0.04em] text-ink">
               Ask your knowledge base
             </p>
-            <p className="max-w-sm text-sm font-semibold leading-6 text-[#14110f]/55">
+            <p className="max-w-sm text-sm font-semibold leading-6 text-ink/55">
               Start by asking a question about your uploaded documents. Answers
               will be sourced directly from your content.
             </p>
+            <div className="mt-2 flex max-w-lg flex-wrap items-center justify-center gap-2">
+              {SUGGESTED_PROMPTS.map((prompt, i) => (
+                <motion.button
+                  key={prompt}
+                  type="button"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.35, delay: 0.15 + i * 0.06 }}
+                  onClick={() => {
+                    setInputValue(prompt);
+                    shouldFocusInputRef.current = true;
+                    focusInput();
+                  }}
+                  className="rounded-full border-2 border-ink bg-cream px-4 py-2 text-xs font-black text-ink shadow-[3px_3px_0_var(--color-ink)] transition hover:-translate-y-0.5 hover:bg-sun"
+                >
+                  {prompt}
+                </motion.button>
+              ))}
+            </div>
           </CenteredState>
         ) : (
           <div className="flex min-h-full flex-col justify-end">
             <div className="mx-auto w-full max-w-3xl space-y-6 pb-4">
               {messages.map((message) => (
-                <MessageBubble key={message.id} message={message} />
+                <MessageBubble key={message.id} message={message} kbId={kbId} onFeedback={handleFeedback} />
               ))}
             </div>
           </div>
@@ -300,7 +377,7 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
           event.preventDefault();
           handleSubmit();
         }}
-        className="flex shrink-0 items-center border-t-2 border-[#14110f] bg-[#fffaf1]/95 px-4 py-4 backdrop-blur"
+        className="flex shrink-0 items-center border-t-2 border-ink bg-cream/95 px-4 py-4 backdrop-blur"
       >
         <div className="mx-auto w-full max-w-3xl">
           <ChatInput
@@ -330,5 +407,6 @@ function toChatMessage(message: MessageItem): Message {
     role: message.role,
     content: message.content,
     sources: message.sources ?? undefined,
+    feedback: message.feedback ?? null,
   };
 }

@@ -3,7 +3,31 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* DocuMind brand palette — single source of truth.
+   Registered as theme colors so utilities (bg-ink, text-ink/45, border-ink/10)
+   and the var(--color-*) references in offset shadows / gradients all resolve. */
+@theme {
+  --color-ink: #14110f;
+  --color-ink-soft: #2a211e;
+  --color-cream: #fffaf1;
+  --color-canvas: #f5efe3;
+  --color-sun: #ffcc33;
+  --color-sun-light: #ffd95f;
+  --color-mint: #a7f3d0;
+  --color-coral: #ff8a65;
+  --color-flame: #ff5c35;
+  --color-ember: #ff7a59;
+  --color-violet: #7c3aed;
+  --color-lilac: #c4b5fd;
+  --color-grape: #6d28d9;
+  --color-cocoa: #3b312c;
+  --color-teal: #19c6a3;
+  --color-grass: #22c55e;
+}
+
 @theme inline {
+  --font-sans: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-heading), var(--font-sans), ui-sans-serif, system-ui, sans-serif;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -121,4 +145,187 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Assistant chat output (react-markdown) */
+.markdown-body {
+  font-size: 0.875rem;
+  line-height: 1.7;
+  color: var(--color-ink);
+}
+
+.markdown-body > :first-child {
+  margin-top: 0;
+}
+
+.markdown-body > :last-child {
+  margin-bottom: 0;
+}
+
+.markdown-body p {
+  margin: 0.75rem 0;
+}
+
+.markdown-body h1,
+.markdown-body h2,
+.markdown-body h3,
+.markdown-body h4 {
+  font-family: var(--font-heading);
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  margin: 1.25rem 0 0.625rem;
+}
+
+.markdown-body h1 { font-size: 1.4rem; }
+.markdown-body h2 { font-size: 1.2rem; }
+.markdown-body h3 { font-size: 1.05rem; }
+.markdown-body h4 { font-size: 0.95rem; }
+
+.markdown-body ul,
+.markdown-body ol {
+  margin: 0.75rem 0;
+  padding-left: 1.4rem;
+}
+
+.markdown-body ul { list-style: disc; }
+.markdown-body ol { list-style: decimal; }
+
+.markdown-body li {
+  margin: 0.3rem 0;
+}
+
+.markdown-body li::marker {
+  color: var(--color-ink);
+}
+
+.markdown-body a {
+  font-weight: 700;
+  color: var(--color-ink);
+  text-decoration: underline;
+  text-decoration-color: var(--color-sun);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 2px;
+}
+
+.markdown-body a:hover {
+  color: var(--color-flame);
+}
+
+.markdown-body strong {
+  font-weight: 800;
+}
+
+.markdown-body code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.82em;
+  font-weight: 600;
+  background: color-mix(in oklab, var(--color-ink) 7%, transparent);
+  border: 1px solid color-mix(in oklab, var(--color-ink) 12%, transparent);
+  border-radius: 0.4rem;
+  padding: 0.1rem 0.35rem;
+}
+
+.markdown-body pre {
+  margin: 0.85rem 0;
+  padding: 0.9rem 1rem;
+  overflow-x: auto;
+  background: var(--color-ink);
+  color: var(--color-cream);
+  border-radius: 1rem;
+  box-shadow: 4px 4px 0 color-mix(in oklab, var(--color-ink) 18%, transparent);
+}
+
+.markdown-body pre code {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  font-weight: 500;
+  color: inherit;
+}
+
+.markdown-body blockquote {
+  margin: 0.85rem 0;
+  padding: 0.4rem 0 0.4rem 1rem;
+  border-left: 4px solid var(--color-sun);
+  color: color-mix(in oklab, var(--color-ink) 70%, transparent);
+  font-style: italic;
+}
+
+.markdown-body table {
+  width: 100%;
+  margin: 0.85rem 0;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+  border: 2px solid var(--color-ink);
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+
+.markdown-body th,
+.markdown-body td {
+  padding: 0.5rem 0.7rem;
+  text-align: left;
+  border-bottom: 1px solid color-mix(in oklab, var(--color-ink) 12%, transparent);
+}
+
+.markdown-body th {
+  background: var(--color-sun);
+  font-weight: 800;
+}
+
+.markdown-body tr:last-child td {
+  border-bottom: 0;
+}
+
+.markdown-body hr {
+  margin: 1.25rem 0;
+  border: 0;
+  border-top: 2px solid color-mix(in oklab, var(--color-ink) 12%, transparent);
+}
+
+.markdown-body img {
+  max-width: 100%;
+  border-radius: 0.75rem;
+}
+
+/* ── Dark mode ─────────────────────────────────────────────
+   Scoped to the authenticated app (.theme-app) so the marketing
+   and auth pages keep their fixed light brand look. Inverted,
+   muted-accent palette: ink flips light (text/borders/shadows),
+   surfaces go dark, accents deepen so light text stays readable. */
+/* Circular reveal for the theme toggle (View Transitions API).
+   Disable the default root cross-fade; the new snapshot is clipped
+   open from the toggle button via WAAPI in ThemeToggle.tsx. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+::view-transition-old(root) {
+  z-index: 0;
+}
+
+::view-transition-new(root) {
+  z-index: 1;
+}
+
+.dark .theme-app {
+  --color-ink: #f4eee2;
+  --color-ink-soft: #e4dccb;
+  --color-cream: #221d17;
+  --color-canvas: #161310;
+  --color-sun: #7a5e16;
+  --color-sun-light: #93741f;
+  --color-mint: #1d5a47;
+  --color-coral: #8a402a;
+  --color-flame: #ff7a4d;
+  --color-ember: #c2502f;
+  --color-violet: #6d4ad1;
+  --color-lilac: #4a3d7a;
+  --color-grape: #7c4dd6;
+  --color-cocoa: #cabfb0;
+  --color-teal: #1aa98c;
+  --color-grass: #1f9d52;
 }

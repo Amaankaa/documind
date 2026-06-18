@@ -1,22 +1,45 @@
 from __future__ import annotations
 
+import ipaddress
+import socket
 import uuid
+from urllib.parse import urlparse
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
-from pydantic import BaseModel
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile, status
+from pydantic import BaseModel, HttpUrl
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import get_current_user_org
 from app.config import get_settings
-from app.database import get_db
+from app.database import AsyncSessionLocal, get_db
 from app.models import Document, DocumentChunk, KnowledgeBase, Organization, User
 from app.services.storage import upload_file
-from app.tasks.ingest_task import ingest_document_task
 
 router = APIRouter(prefix="/api/kb/{kb_id}/documents", tags=["documents"])
 status_router = APIRouter(prefix="/api/documents", tags=["documents"])
 settings = get_settings()
+
+
+async def _run_ingestion_inline(document_id: uuid.UUID) -> None:
+    """Run the ingestion pipeline in-process with its own DB session.
+
+    Used when Celery is disabled (e.g. free hosting tiers without a worker).
+    """
+    from app.services.ingestion import run_ingestion
+
+    async with AsyncSessionLocal() as db:
+        await run_ingestion(document_id, db)
+
+
+def _dispatch_ingestion(document_id: uuid.UUID, background_tasks: BackgroundTasks) -> None:
+    """Queue ingestion via Celery, or run it inline as a FastAPI background task."""
+    if settings.use_celery:
+        from app.tasks.ingest_task import ingest_document_task
+
+        ingest_document_task.delay(str(document_id))
+    else:
+        background_tasks.add_task(_run_ingestion_inline, document_id)
 
 
 # ── Schemas ───────────────────────────────────────────────────────────────────
@@ -30,6 +53,22 @@ class DocumentResponse(BaseModel):
     error_message: str | None
 
     model_config = {"from_attributes": True}
+
+
+class UrlIngestRequest(BaseModel):
+    url: HttpUrl
+
+
+class ChunkContextItem(BaseModel):
+    chunk_index: int
+    content: str
+
+
+class ChunkContextResponse(BaseModel):
+    document_id: uuid.UUID
+    filename: str
+    target_index: int
+    chunks: list[ChunkContextItem]
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -49,10 +88,41 @@ async def _get_kb_for_org(
     return kb
 
 
+def _validate_public_url(raw_url: str) -> str:
+    """Reject anything that isn't a public http(s) URL, to block SSRF against
+    internal/metadata addresses. Returns the normalized URL string."""
+    parsed = urlparse(raw_url)
+    if parsed.scheme not in ("http", "https"):
+        raise HTTPException(status_code=400, detail="URL must start with http:// or https://")
+    host = parsed.hostname
+    if not host:
+        raise HTTPException(status_code=400, detail="URL is missing a host")
+
+    try:
+        infos = socket.getaddrinfo(host, None)
+    except socket.gaierror:
+        raise HTTPException(status_code=400, detail="Could not resolve URL host")
+
+    for info in infos:
+        ip = ipaddress.ip_address(info[4][0])
+        if (
+            ip.is_private
+            or ip.is_loopback
+            or ip.is_link_local
+            or ip.is_reserved
+            or ip.is_multicast
+            or ip.is_unspecified
+        ):
+            raise HTTPException(status_code=400, detail="URL resolves to a non-public address")
+
+    return raw_url
+
+
 # ── Routes ────────────────────────────────────────────────────────────────────
 @router.post("", response_model=DocumentResponse, status_code=status.HTTP_201_CREATED)
 async def upload_document(
     kb_id: uuid.UUID,
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     auth: tuple[User, Organization] = Depends(get_current_user_org),
     db: AsyncSession = Depends(get_db),
@@ -83,9 +153,43 @@ async def upload_document(
     await db.commit()
     await db.refresh(doc)
 
-    # Queue async ingestion
-    ingest_document_task.delay(str(doc.id))
+    # Queue async ingestion (Celery worker or in-process background task)
+    _dispatch_ingestion(doc.id, background_tasks)
 
+    return doc
+
+
+@router.post("/url", response_model=DocumentResponse, status_code=status.HTTP_201_CREATED)
+async def ingest_url(
+    kb_id: uuid.UUID,
+    body: UrlIngestRequest,
+    background_tasks: BackgroundTasks,
+    auth: tuple[User, Organization] = Depends(get_current_user_org),
+    db: AsyncSession = Depends(get_db),
+):
+    """Ingest a public web page into the knowledge base. The page URL is stored
+    as the document's source; the ingestion pipeline fetches and extracts it."""
+    _, org = auth
+    await _get_kb_for_org(kb_id, org, db)
+
+    url = _validate_public_url(str(body.url))
+    parsed = urlparse(url)
+    # A readable, deduplicating filename: host + path (trimmed).
+    label = (parsed.hostname or url) + parsed.path.rstrip("/")
+    filename = label[:200] or url
+
+    doc = Document(
+        kb_id=kb_id,
+        filename=filename,
+        file_type="url",
+        file_url=url,
+        status="processing",
+    )
+    db.add(doc)
+    await db.commit()
+    await db.refresh(doc)
+
+    _dispatch_ingestion(doc.id, background_tasks)
     return doc
 
 
@@ -99,6 +203,51 @@ async def list_documents(
     await _get_kb_for_org(kb_id, org, db)
     result = await db.execute(select(Document).where(Document.kb_id == kb_id))
     return result.scalars().all()
+
+
+@router.get("/{doc_id}/context", response_model=ChunkContextResponse)
+async def get_chunk_context(
+    kb_id: uuid.UUID,
+    doc_id: uuid.UUID,
+    chunk_index: int,
+    window: int = 1,
+    auth: tuple[User, Organization] = Depends(get_current_user_org),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return a cited chunk plus its neighbours, so a citation can be read in
+    its surrounding document context."""
+    _, org = auth
+    await _get_kb_for_org(kb_id, org, db)
+
+    window = max(0, min(window, 3))
+    doc_result = await db.execute(
+        select(Document).where(Document.id == doc_id, Document.kb_id == kb_id)
+    )
+    doc = doc_result.scalar_one_or_none()
+    if doc is None:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    rows = await db.execute(
+        select(DocumentChunk.chunk_index, DocumentChunk.content)
+        .where(
+            DocumentChunk.document_id == doc_id,
+            DocumentChunk.chunk_index >= chunk_index - window,
+            DocumentChunk.chunk_index <= chunk_index + window,
+        )
+        .order_by(DocumentChunk.chunk_index)
+    )
+    chunks = [
+        ChunkContextItem(chunk_index=r.chunk_index, content=r.content) for r in rows
+    ]
+    if not chunks:
+        raise HTTPException(status_code=404, detail="Chunk not found")
+
+    return ChunkContextResponse(
+        document_id=doc_id,
+        filename=doc.filename,
+        target_index=chunk_index,
+        chunks=chunks,
+    )
 
 
 @router.delete("/{doc_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -144,6 +293,7 @@ async def get_document_status(
 async def reingest_document(
     kb_id: uuid.UUID,
     doc_id: uuid.UUID,
+    background_tasks: BackgroundTasks,
     auth: tuple[User, Organization] = Depends(get_current_user_org),
     db: AsyncSession = Depends(get_db),
 ):
@@ -165,5 +315,5 @@ async def reingest_document(
     await db.commit()
     await db.refresh(doc)
 
-    ingest_document_task.delay(str(doc.id))
+    _dispatch_ingestion(doc.id, background_tasks)
     return doc

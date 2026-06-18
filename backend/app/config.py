@@ -17,6 +17,10 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
     celery_broker_url: str = "redis://localhost:6379/0"
     celery_result_backend: str = "redis://localhost:6379/1"
+    # When False, document ingestion runs in-process via FastAPI BackgroundTasks
+    # instead of being dispatched to a Celery worker (needed for free hosting
+    # tiers that don't run a separate worker/Redis).
+    use_celery: bool = True
 
     # ── Gemini ────────────────────────────────────────────────────────────────
     gemini_api_key: str

@@ -5,18 +5,12 @@ from dataclasses import dataclass
 
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
 
 from app.config import get_settings
 from app.models import DocumentChunk, Document
+from app.services.embeddings import get_embeddings
 
 settings = get_settings()
-
-_embeddings = GoogleGenerativeAIEmbeddings(
-    model=settings.embedding_model,
-    google_api_key=settings.gemini_api_key,
-    output_dimensionality=settings.embedding_dimensions,
-)
 
 
 @dataclass
@@ -40,7 +34,7 @@ async def retrieve_top_chunks(
     against document_chunks scoped to kb_id.
     """
     k = top_k or settings.top_k_chunks
-    query_embedding: list[float] = await _embeddings.aembed_query(question)
+    query_embedding: list[float] = await get_embeddings().aembed_query(question)
 
     # pgvector cosine distance (1 - cosine_similarity)
     stmt = text(

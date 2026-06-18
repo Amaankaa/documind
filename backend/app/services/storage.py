@@ -51,7 +51,7 @@ async def upload_file(file_bytes: bytes, filename: str, content_type: str) -> st
         file_options={"content-type": content_type},
     )
     signed = client.storage.from_(settings.storage_bucket).create_signed_url(
-        path, expires_in=60 * 60 * 24 * 365 * 10
+        path, expires_in=3600
     )
     return signed["signedURL"]
 
@@ -61,7 +61,16 @@ async def download_file(url: str) -> bytes:
     if url.startswith("file://"):
         return Path(url[7:]).read_bytes()
 
-    async with httpx.AsyncClient(follow_redirects=True, timeout=60) as client:
+    # Send a real browser User-Agent — many sites (e.g. Wikipedia) return 403
+    # to clients that don't identify themselves.
+    headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+            "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+        ),
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    }
+    async with httpx.AsyncClient(follow_redirects=True, timeout=60, headers=headers) as client:
         resp = await client.get(url)
         resp.raise_for_status()
         return resp.content

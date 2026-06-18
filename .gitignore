@@ -22,6 +22,10 @@ backend/.local_storage/
 .env
 .env.local
 .env.*.local
+*.bak
+
+# Scratch / throwaway scripts (e.g. ad-hoc API test at repo root)
+/.py
 
 # IDE
 .vscode/

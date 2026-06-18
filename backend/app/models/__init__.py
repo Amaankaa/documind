@@ -27,7 +27,7 @@ class User(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     clerk_id: Mapped[str] = mapped_column(String, unique=True, nullable=False, index=True)
-    email: Mapped[str] = mapped_column(String, unique=True, nullable=False)
+    email: Mapped[str | None] = mapped_column(String, unique=True, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     organizations: Mapped[list["Organization"]] = relationship(back_populates="owner")
@@ -109,7 +109,7 @@ class DocumentChunk(Base):
     )
     content: Mapped[str] = mapped_column(Text, nullable=False)
     chunk_index: Mapped[int] = mapped_column(Integer, nullable=False)
-    # pgvector column — 1536 dims for text-embedding-3-small
+    # pgvector column — 1536 dims for gemini-embedding-2-preview
     embedding: Mapped[list[float]] = mapped_column(Vector(1536), nullable=True)
     metadata_: Mapped[dict | None] = mapped_column("metadata", JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
@@ -155,3 +155,38 @@ class Message(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     conversation: Mapped["Conversation"] = relationship(back_populates="messages")
+
+
+# ---------------------------------------------------------------------------
+# API Keys  (programmatic access scoped to an organization)
+# ---------------------------------------------------------------------------
+class ApiKey(Base):
+    __tablename__ = "api_keys"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    org_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    # First few characters of the key, shown in the UI to identify it.
+    prefix: Mapped[str] = mapped_column(String, nullable=False)
+    # SHA-256 hex digest of the full key — the raw key is never stored.
+    key_hash: Mapped[str] = mapped_column(String, unique=True, nullable=False, index=True)
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+# ---------------------------------------------------------------------------
+# Feedback  (thumbs up / down on assistant messages)
+# ---------------------------------------------------------------------------
+class Feedback(Base):
+    __tablename__ = "feedback"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    message_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("messages.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
+    rating: Mapped[str] = mapped_column(String, nullable=False)  # positive | negative
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

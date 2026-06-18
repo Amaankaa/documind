@@ -7,8 +7,9 @@ export async function consumeSSEStream(
   body: object,
   token: string,
   onToken: (token: string) => void,
-  onDone: (data: { conversation_id: string; sources: Source[] }) => void,
+  onDone: (data: { conversation_id: string; message_id?: string; sources: Source[] }) => void,
   onError?: (err: Error) => void,
+  signal?: AbortSignal,
 ) {
   const response = await fetch(url, {
     method: "POST",
@@ -18,6 +19,7 @@ export async function consumeSSEStream(
       Accept: "text/event-stream",
     },
     body: JSON.stringify(body),
+    signal,
   });
 
   if (!response.ok || !response.body) {
@@ -46,7 +48,11 @@ export async function consumeSSEStream(
           onToken(parsed.token);
         }
         if (parsed.done) {
-          onDone({ conversation_id: parsed.conversation_id, sources: parsed.sources ?? [] });
+          onDone({
+            conversation_id: parsed.conversation_id,
+            message_id: parsed.message_id,
+            sources: parsed.sources ?? [],
+          });
         }
       } catch {
         // malformed SSE line — skip

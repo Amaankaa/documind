@@ -31,7 +31,7 @@ export const ChatInput = forwardRef<HTMLTextAreaElement, ChatInputProps>(
           onKeyDown={handleKey}
           disabled={disabled}
           rows={1}
-          className="max-h-40 resize-none rounded-[1.35rem] border-2 border-[#14110f] bg-white text-sm font-bold text-[#14110f] placeholder:text-[#14110f]/55 shadow-[4px_4px_0_rgba(20,17,15,0.16)] transition-all duration-200 focus-visible:ring-[#ffcc33]"
+          className="max-h-40 resize-none rounded-[1.35rem] border-2 border-ink bg-cream text-sm font-bold text-ink placeholder:text-ink/55 shadow-[4px_4px_0_rgba(20,17,15,0.16)] transition-all duration-200 focus-visible:ring-sun"
           style={{ overflow: "auto" }}
         />
         <Button
@@ -39,7 +39,7 @@ export const ChatInput = forwardRef<HTMLTextAreaElement, ChatInputProps>(
           onClick={onSubmit}
           disabled={disabled || !value.trim()}
           size="icon"
-          className="h-11 w-11 shrink-0 cursor-pointer rounded-full border-2 border-[#14110f] bg-[#ffcc33] text-[#14110f] shadow-[4px_4px_0_#14110f] transition hover:-translate-y-0.5 hover:bg-[#ffd95f]"
+          className="h-11 w-11 shrink-0 cursor-pointer rounded-full border-2 border-ink bg-sun text-ink shadow-[4px_4px_0_var(--color-ink)] transition hover:-translate-y-0.5 hover:bg-sun-light"
           aria-label="Send message"
         >
           {disabled ? (

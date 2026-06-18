@@ -4,23 +4,17 @@ import logging
 import uuid
 
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.models import Document, DocumentChunk
-from app.services.parsers import parse_document
+from app.services.embeddings import get_embeddings
+from app.services.parsers import parse_document, parse_html
 from app.services.storage import download_file
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
-
-_embeddings = GoogleGenerativeAIEmbeddings(
-    model=settings.embedding_model,
-    google_api_key=settings.gemini_api_key,
-    output_dimensionality=settings.embedding_dimensions,
-)
 
 _splitter = RecursiveCharacterTextSplitter(
     chunk_size=settings.chunk_size,
@@ -67,8 +61,12 @@ async def run_ingestion(document_id: uuid.UUID, db: AsyncSession) -> None:
         file_bytes = await download_file(doc.file_url)
         await _set_progress(document_id, _STAGE_DOWNLOAD, db)
 
-        # 2. Parse
-        text = parse_document(file_bytes, doc.filename)
+        # 2. Parse — web pages take the HTML extraction path; everything else
+        #    is parsed by file extension.
+        if doc.file_type == "url":
+            _, text = parse_html(file_bytes)
+        else:
+            text = parse_document(file_bytes, doc.filename)
         await _set_progress(document_id, _STAGE_PARSE, db)
 
         # 3. Split
@@ -82,7 +80,7 @@ async def run_ingestion(document_id: uuid.UUID, db: AsyncSession) -> None:
         last_reported = _STAGE_SPLIT
 
         for i, chunk_text in enumerate(chunks):
-            batch = await _embeddings.aembed_documents([chunk_text])
+            batch = await get_embeddings().aembed_documents([chunk_text])
             embeddings.extend(batch)
 
             # Throttle DB writes: only update when progress crosses a whole integer

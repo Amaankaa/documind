@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,7 +16,7 @@ router = APIRouter(prefix="/api/kb", tags=["knowledge-bases"])
 
 # ── Schemas ───────────────────────────────────────────────────────────────────
 class KBCreate(BaseModel):
-    name: str
+    name: str = Field(..., min_length=1, max_length=200)
     description: str | None = None
 
 
