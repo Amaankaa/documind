@@ -2,21 +2,24 @@ from __future__ import annotations
 
 import json
 import uuid
+from datetime import datetime, timezone
 from typing import AsyncIterator
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import get_user_org_flexible
 from app.config import get_settings
 from app.database import get_db
 from app.limiter import limiter
-from app.models import Conversation, KnowledgeBase, Message, Organization, User
+from app.models import Concept, Conversation, KnowledgeBase, Message, Organization, User
+from app.services.community import get_kb_for_access, get_personal_kb_optional
+from app.services.learning_path import seed_interview_concepts
 from app.services.llm import stream_rag_response
-from app.services.retrieval import retrieve_top_chunks
+from app.services.retrieval import retrieve_top_chunks_for_kbs
 
 router = APIRouter(prefix="/api/kb", tags=["query"])
 
@@ -29,6 +32,32 @@ HISTORY_WINDOW = 10
 class QueryRequest(BaseModel):
     question: str = Field(..., min_length=1)
     session_id: str | None = None  # conversation id (UUID str) — None = new conversation
+    concept_slug: str | None = None  # study-map pattern scope for Socratic tutor
+
+
+async def _enforce_daily_query_budget(user: User, db: AsyncSession) -> None:
+    """Cap LLM tutor usage per user per UTC day (server-side API key protection)."""
+    limit = settings.query_daily_limit_per_user
+    if limit <= 0:
+        return
+    day_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    used = (
+        await db.execute(
+            select(func.count())
+            .select_from(Message)
+            .join(Conversation, Message.conversation_id == Conversation.id)
+            .where(
+                Conversation.user_id == user.id,
+                Message.role == "user",
+                Message.created_at >= day_start,
+            )
+        )
+    ).scalar_one()
+    if used >= limit:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Daily limit of {limit} questions reached. Resets at midnight UTC.",
+        )
 
 
 @router.post("/{kb_id}/query")
@@ -41,16 +70,21 @@ async def query_kb(
     db: AsyncSession = Depends(get_db),
 ):
     user, org = auth
+    await _enforce_daily_query_budget(user, db)
 
-    # Verify KB belongs to org
-    result = await db.execute(
-        select(KnowledgeBase).where(
-            KnowledgeBase.id == kb_id, KnowledgeBase.org_id == org.id
+    kb = await get_kb_for_access(db, kb_id, org)
+
+    concept_title: str | None = None
+    concept_id: uuid.UUID | None = None
+    if body.concept_slug:
+        await seed_interview_concepts(db)
+        concept_row = await db.execute(
+            select(Concept).where(Concept.slug == body.concept_slug.strip())
         )
-    )
-    kb = result.scalar_one_or_none()
-    if kb is None:
-        raise HTTPException(status_code=404, detail="Knowledge base not found")
+        concept = concept_row.scalar_one_or_none()
+        if concept:
+            concept_title = concept.title
+            concept_id = concept.id
 
     # Resolve or create conversation
     conversation: Conversation | None = None
@@ -93,8 +127,19 @@ async def query_kb(
     db.add(user_msg)
     await db.commit()
 
-    # Retrieve top-k chunks (may be empty for conversational / off-topic queries)
-    chunks = await retrieve_top_chunks(body.question, kb_id, db)
+    # Retrieve top-k chunks — community tutor also searches personal notes
+    kb_ids = [kb_id]
+    if kb.is_community:
+        personal = await get_personal_kb_optional(db, user, org)
+        if personal:
+            kb_ids.append(personal.id)
+
+    chunks = await retrieve_top_chunks_for_kbs(
+        body.question,
+        kb_ids,
+        db,
+        concept_id=concept_id,
+    )
 
     sources = [
         {
@@ -115,6 +160,8 @@ async def query_kb(
             chunks,
             org_name=org.name,
             history=history,
+            tutor_mode=concept_title is not None,
+            concept_title=concept_title,
         ):
             full_response.append(token)
             yield f"data: {json.dumps({'token': token})}\n\n"

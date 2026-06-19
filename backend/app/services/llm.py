@@ -4,12 +4,8 @@ from typing import AsyncIterator
 
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain_google_genai import ChatGoogleGenerativeAI
-
-from app.config import get_settings
+from app.services.llm_factory import get_chat_llm
 from app.services.retrieval import RetrievedChunk
-
-settings = get_settings()
 
 SYSTEM_PROMPT = """\
 You are a friendly, knowledgeable assistant for {org_name}. \
@@ -33,9 +29,39 @@ Guidelines:
 - Keep your tone warm, clear, and professional. Be helpful, not robotic.
 """
 
+SOCRATIC_TUTOR_PROMPT = """\
+You are AlgoMentor — a Socratic DSA interview tutor helping a student study \
+**{concept_title}** for big-tech coding interviews.
+
+Your job is to teach thinking, not to hand out full solutions.
+
+Guidelines:
+- Ground hints in the provided community notes and context documents when available.
+- Ask guiding questions before revealing the next step. Prefer "What invariant can \
+  you maintain?" over dumping the algorithm.
+- Never paste a complete LeetCode solution or full working code unless the student \
+  has explicitly struggled through at least two hints and asks for a nudge on a \
+  specific line.
+- If they ask for the answer outright, redirect: offer a smaller hint, a pattern \
+  reminder, or a sanity-check question.
+- Keep responses concise (2–4 short paragraphs max). Use bullet steps only when \
+  outlining an approach at a high level.
+- Reference time/space complexity when it helps cement the pattern.
+- Encourage them to try a concrete example on paper before coding.
+- Tone: supportive peer who did A2SV-style prep, not a lecturing professor.
+"""
+
 RAG_PROMPT = ChatPromptTemplate.from_messages(
     [
         ("system", SYSTEM_PROMPT),
+        MessagesPlaceholder(variable_name="history", optional=True),
+        ("human", "{human_turn}"),
+    ]
+)
+
+TUTOR_PROMPT = ChatPromptTemplate.from_messages(
+    [
+        ("system", SOCRATIC_TUTOR_PROMPT),
         MessagesPlaceholder(variable_name="history", optional=True),
         ("human", "{human_turn}"),
     ]
@@ -64,14 +90,12 @@ async def stream_rag_response(
     chunks: list[RetrievedChunk],
     org_name: str = "your organization",
     history: list[tuple[str, str]] | None = None,
+    *,
+    tutor_mode: bool = False,
+    concept_title: str | None = None,
 ) -> AsyncIterator[str]:
     """Yields streamed token deltas from the LLM."""
-    llm = ChatGoogleGenerativeAI(
-        model=settings.chat_model,
-        google_api_key=settings.gemini_api_key,
-        streaming=True,
-        temperature=1.0,
-    )
+    llm = get_chat_llm(streaming=True, temperature=1.0)
 
     if chunks:
         context = _build_context(chunks)
@@ -79,7 +103,7 @@ async def stream_rag_response(
             f"Context Documents:\n{context}\n\n"
             f"---\n"
             f"Question: {question}\n\n"
-            f"Answer using only the context above."
+            f"Answer using the context above."
         )
     else:
         human_turn = (
@@ -87,15 +111,19 @@ async def stream_rag_response(
             f"Question: {question}"
         )
 
-    chain = RAG_PROMPT | llm
+    prompt = TUTOR_PROMPT if tutor_mode and concept_title else RAG_PROMPT
+    chain = prompt | llm
 
-    async for chunk in chain.astream(
-        {
-            "org_name": org_name,
-            "history": _build_history(history or []),
-            "human_turn": human_turn,
-        }
-    ):
+    payload: dict = {
+        "history": _build_history(history or []),
+        "human_turn": human_turn,
+    }
+    if tutor_mode and concept_title:
+        payload["concept_title"] = concept_title
+    else:
+        payload["org_name"] = org_name
+
+    async for chunk in chain.astream(payload):
         yield chunk.content
 
 
@@ -123,12 +151,7 @@ async def answer_once(
     rather than a token stream. Shares the same prompt and context builder so
     it evaluates the exact behaviour the live chat path produces.
     """
-    llm = ChatGoogleGenerativeAI(
-        model=settings.chat_model,
-        google_api_key=settings.gemini_api_key,
-        streaming=False,
-        temperature=1.0,
-    )
+    llm = get_chat_llm(streaming=False, temperature=1.0)
     chain = RAG_PROMPT | llm
     result = await chain.ainvoke(
         {
