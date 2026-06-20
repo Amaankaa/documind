@@ -34,19 +34,12 @@ _judge_llm = None
 
 
 def _get_judge_llm():
-    """Lazily build a deterministic (temp 0) Gemini client for judging.
-
-    Isolated in a factory so tests can patch it without importing LangChain.
-    """
+    """Lazily build a deterministic (temp 0) chat client for judging."""
     global _judge_llm
     if _judge_llm is None:
-        from langchain_google_genai import ChatGoogleGenerativeAI
+        from app.services.llm_factory import get_chat_llm
 
-        _judge_llm = ChatGoogleGenerativeAI(
-            model=settings.chat_model,
-            google_api_key=settings.gemini_api_key,
-            temperature=0.0,
-        )
+        _judge_llm = get_chat_llm(streaming=False, temperature=0.0)
     return _judge_llm
 
 

@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import os
 from functools import lru_cache
+from typing import Literal
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -22,8 +24,12 @@ class Settings(BaseSettings):
     # tiers that don't run a separate worker/Redis).
     use_celery: bool = True
 
-    # ── Gemini ────────────────────────────────────────────────────────────────
-    gemini_api_key: str
+    # ── LLM / Embeddings ──────────────────────────────────────────────────────
+    # Provider: "gemini" (direct Google) or "laozhang" (OpenAI-compatible proxy).
+    llm_provider: Literal["gemini", "laozhang"] = "gemini"
+    gemini_api_key: str = ""
+    laozhang_api_key: str = ""
+    laozhang_base_url: str = "https://api.laozhang.ai/v1"
     embedding_model: str = "gemini-embedding-2-preview"
     chat_model: str = "gemini-2.5-flash"
     embedding_dimensions: int = 1536
@@ -44,6 +50,8 @@ class Settings(BaseSettings):
 
     # ── Rate Limiting ─────────────────────────────────────────────────────────
     query_rate_limit: str = "20/minute"
+    # Per-user cap on tutor questions per UTC day (0 = unlimited).
+    query_daily_limit_per_user: int = 50
 
     # ── Sentry ────────────────────────────────────────────────────────────────
     sentry_dsn: str = ""
@@ -54,7 +62,12 @@ class Settings(BaseSettings):
     top_k_chunks: int = 12
 
     # ── File Upload ───────────────────────────────────────────────────────────
-    max_upload_bytes: int = 50 * 1024 * 1024  # 50 MB
+    max_upload_bytes: int = 10 * 1024 * 1024  # 10 MB
+    max_chunks_per_kb: int = 100
+    community_kb_github_repo: str = "BemnetMussa/algorithm-knowledge-base"
+    community_kb_github_branch: str = "main"
+    community_sync_on_startup: bool = False
+    community_sync_interval_hours: float = 6.0  # 0 = disable Celery beat schedule
     allowed_mime_types: list[str] = [
         "application/pdf",
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -62,6 +75,16 @@ class Settings(BaseSettings):
         "text/csv",
         "application/csv",
     ]
+
+
+    @model_validator(mode="after")
+    def _validate_llm_credentials(self) -> Settings:
+        if self.llm_provider == "laozhang":
+            if not self.laozhang_api_key.strip():
+                raise ValueError("LAOZHANG_API_KEY is required when LLM_PROVIDER=laozhang")
+        elif not self.gemini_api_key.strip():
+            raise ValueError("GEMINI_API_KEY is required when LLM_PROVIDER=gemini")
+        return self
 
 
 @lru_cache
