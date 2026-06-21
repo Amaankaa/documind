@@ -67,8 +67,8 @@ async def test_create_kb(client, make_user, make_org, mock_auth):
             json={"name": "HR Docs", "description": "Policies"},
             headers=headers,
         )
-    assert resp.status_code == 201
-    assert resp.json()["name"] == "HR Docs"
+    assert resp.status_code == 400
+    assert "personal workspace" in resp.json()["detail"].lower()
 
 
 async def test_list_kbs(client, make_user, make_org, make_kb, mock_auth):
@@ -79,7 +79,10 @@ async def test_list_kbs(client, make_user, make_org, make_kb, mock_auth):
     with mock_auth(clerk_id=user.clerk_id, email=user.email) as headers:
         resp = await client.get("/api/kb", headers=headers)
     assert resp.status_code == 200
-    assert len(resp.json()) == 2
+    names = {kb["name"] for kb in resp.json()}
+    assert "KB One" in names
+    assert "KB Two" in names
+    assert "My notes" in names
 
 
 async def test_delete_kb(client, make_user, make_org, make_kb, mock_auth):
@@ -198,7 +201,7 @@ async def test_query_invalid_session_id(
     org = await make_org(owner=user)
     kb = await make_kb(org=org)
     with mock_auth(clerk_id=user.clerk_id, email=user.email) as headers:
-        with patch("app.routers.query.retrieve_top_chunks", new=AsyncMock(return_value=[])):
+        with patch("app.routers.query.retrieve_top_chunks_for_kbs", new=AsyncMock(return_value=[])):
             with patch("app.routers.query.stream_rag_response") as mock_stream:
                 async def _fake_stream(*args, **kwargs):
                     yield "Hello"
@@ -209,6 +212,67 @@ async def test_query_invalid_session_id(
                     headers=headers,
                 )
     assert resp.status_code == 422
+
+
+async def test_query_community_kb_accessible(
+    client, db, make_user, make_org, make_kb, mock_auth
+):
+    """Students can query the shared community corpus without owning that org."""
+    user = await make_user()
+    await make_org(owner=user)
+    system_user = await make_user(clerk_id="clerk_system", email="system@test.com")
+    community_org = await make_org(owner=system_user, name="Community", slug="community-test")
+    community_kb = await make_kb(org=community_org, name="Official community notes")
+    community_kb.is_community = True
+    db.add(community_kb)
+    await db.commit()
+    await db.refresh(community_kb)
+
+    with mock_auth(clerk_id=user.clerk_id, email=user.email) as headers:
+        with patch("app.routers.query.retrieve_top_chunks_for_kbs", new=AsyncMock(return_value=[])):
+            with patch("app.routers.query.stream_rag_response") as mock_stream:
+                async def _fake_stream(*args, **kwargs):
+                    yield "Hint"
+                mock_stream.return_value = _fake_stream()
+                resp = await client.post(
+                    f"/api/kb/{community_kb.id}/query",
+                    json={"question": "How does sliding window work?"},
+                    headers=headers,
+                )
+    assert resp.status_code == 200
+
+
+async def test_query_community_kb_with_duplicate_personal_kbs(
+    client, db, make_user, make_org, make_kb, mock_auth
+):
+    """Concurrent provisioning can leave duplicate personal KBs — query must not 500."""
+    user = await make_user()
+    org = await make_org(owner=user)
+    system_user = await make_user(clerk_id="clerk_system2", email="system2@test.com")
+    community_org = await make_org(owner=system_user, name="Community 2", slug="community-test-2")
+    community_kb = await make_kb(org=community_org, name="Official community notes")
+    community_kb.is_community = True
+    db.add(community_kb)
+
+    first = await make_kb(org=org, name="My notes")
+    first.is_personal = True
+    second = await make_kb(org=org, name="My notes")
+    second.is_personal = True
+    db.add_all([first, second])
+    await db.commit()
+
+    with mock_auth(clerk_id=user.clerk_id, email=user.email) as headers:
+        with patch("app.routers.query.retrieve_top_chunks_for_kbs", new=AsyncMock(return_value=[])):
+            with patch("app.routers.query.stream_rag_response") as mock_stream:
+                async def _fake_stream(*args, **kwargs):
+                    yield "Hint"
+                mock_stream.return_value = _fake_stream()
+                resp = await client.post(
+                    f"/api/kb/{community_kb.id}/query",
+                    json={"question": "Explain two pointers"},
+                    headers=headers,
+                )
+    assert resp.status_code == 200
 
 
 # ── Feedback ─────────────────────────────────────────────────────────────────

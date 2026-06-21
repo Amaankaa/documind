@@ -44,10 +44,11 @@ class TestStreamRagResponse:
 
         mock_chain.astream = _fake_astream
 
+        mock_llm = MagicMock()
         mock_prompt = MagicMock()
         mock_prompt.__or__ = MagicMock(return_value=mock_chain)
 
-        with patch.object(llm_module, "ChatGoogleGenerativeAI"), \
+        with patch.object(llm_module, "get_chat_llm", return_value=mock_llm), \
              patch.object(llm_module, "RAG_PROMPT", mock_prompt):
             tokens = []
             async for token in llm_module.stream_rag_response(
@@ -78,10 +79,11 @@ class TestStreamRagResponse:
 
         mock_chain.astream = _fake_astream
 
+        mock_llm = MagicMock()
         mock_prompt = MagicMock()
         mock_prompt.__or__ = MagicMock(return_value=mock_chain)
 
-        with patch.object(llm_module, "ChatGoogleGenerativeAI"), \
+        with patch.object(llm_module, "get_chat_llm", return_value=mock_llm), \
              patch.object(llm_module, "RAG_PROMPT", mock_prompt):
             tokens = []
             async for token in llm_module.stream_rag_response(
@@ -110,10 +112,11 @@ class TestStreamRagResponse:
             ("assistant", "The handbook covers policies."),
         ]
 
+        mock_llm = MagicMock()
         mock_prompt = MagicMock()
         mock_prompt.__or__ = MagicMock(return_value=mock_chain)
 
-        with patch.object(llm_module, "ChatGoogleGenerativeAI"), \
+        with patch.object(llm_module, "get_chat_llm", return_value=mock_llm), \
              patch.object(llm_module, "RAG_PROMPT", mock_prompt):
             async for _ in llm_module.stream_rag_response(
                 "Tell me more", [], history=history

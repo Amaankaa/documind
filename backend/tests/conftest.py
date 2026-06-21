@@ -63,6 +63,7 @@ os.environ.setdefault("CLERK_SECRET_KEY", "fake-clerk-key")
 os.environ.setdefault("CLERK_JWKS_URL", "https://fake.clerk.dev/.well-known/jwks.json")
 os.environ.setdefault("SUPABASE_URL", "https://fake.supabase.co")
 os.environ.setdefault("SUPABASE_SERVICE_KEY", "fake-supabase-key")
+os.environ.setdefault("USE_LOCAL_STORAGE", "true")
 
 # Now it's safe to import application code
 from app.database import Base, get_db

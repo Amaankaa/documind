@@ -46,7 +46,7 @@ def _patch_query_pipeline():
         yield "Hello"
 
     return (
-        patch("app.routers.query.retrieve_top_chunks", new=AsyncMock(return_value=[])),
+        patch("app.routers.query.retrieve_top_chunks_for_kbs", new=AsyncMock(return_value=[])),
         patch("app.routers.query.stream_rag_response", return_value=_fake_stream()),
     )
 
