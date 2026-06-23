@@ -192,3 +192,139 @@ export const evalApi = {
   getResults: (runId: string, config?: AxiosRequestConfig) =>
     api.get<EvalResult[]>(`/api/eval-runs/${runId}/results`, config),
 };
+
+// ── AlgoMentor — interview study map ─────────────────────────────────────────
+
+export type ConceptStatus = "locked" | "available" | "in_progress" | "mastered";
+
+export interface GitHubResource {
+  title: string;
+  url: string;
+  raw_url: string | null;
+  contributor: string | null;
+  kind: "note" | "folder" | "roadmap";
+  repo_url: string;
+}
+
+export interface PracticeProblem {
+  id: string;
+  leetcode_slug: string;
+  title: string;
+  url: string;
+  verified: boolean;
+}
+
+export interface MasteryProgress {
+  required: number;
+  verified: number;
+  can_master: boolean;
+}
+
+export interface ConceptNode {
+  id: string;
+  slug: string;
+  title: string;
+  description: string;
+  order_index: number;
+  is_bonus: boolean;
+  contributor_wanted: boolean;
+  prerequisites: string[];
+  status: ConceptStatus;
+  github_resources: GitHubResource[];
+  practice_problems: PracticeProblem[];
+  mastery: MasteryProgress;
+}
+
+export interface ConceptEdge {
+  prerequisite_slug: string;
+  concept_slug: string;
+}
+
+export interface ConceptMapData {
+  concepts: ConceptNode[];
+  edges: ConceptEdge[];
+  next_concept: ConceptNode | null;
+  meta: ConceptMapMeta;
+}
+
+export interface ConceptMapMeta {
+  knowledge_base_repo_url: string;
+  knowledge_base_name: string;
+  knowledge_base_description: string;
+  community_kb_id?: string;
+}
+
+export interface Me {
+  user_id: string;
+  org_id: string;
+  org_slug: string;
+  community_kb_id: string;
+  personal_kb_id: string;
+  personal_chunk_count: number;
+  personal_chunk_limit: number;
+}
+
+export const meApi = {
+  get: (config?: AxiosRequestConfig) => api.get<Me>("/api/me", config),
+};
+
+export const studyMapApi = {
+  getMap: (includeBonus = false, config?: AxiosRequestConfig) =>
+    api.get<ConceptMapData>("/api/study-map", {
+      ...config,
+      params: { include_bonus: includeBonus },
+    }),
+  getNext: (includeBonus = false, config?: AxiosRequestConfig) =>
+    api.get<ConceptNode>("/api/study-map/next", {
+      ...config,
+      params: { include_bonus: includeBonus },
+    }),
+  updateProgress: (
+    conceptId: string,
+    status: "available" | "in_progress" | "mastered",
+    config?: AxiosRequestConfig,
+  ) =>
+    api.patch<ConceptNode>(`/api/study-map/concepts/${conceptId}/progress`, { status }, config),
+  verifyProblem: (
+    conceptId: string,
+    problemId: string,
+    proofUrl: string,
+    config?: AxiosRequestConfig,
+  ) =>
+    api.post<PracticeProblem>(
+      `/api/study-map/concepts/${conceptId}/problems/${problemId}/verify`,
+      { proof_url: proofUrl },
+      config,
+    ),
+  syncCommunity: (config?: AxiosRequestConfig) =>
+    api.post<{ created: number; updated: number; skipped: number; errors: string[] }>(
+      "/api/community/sync",
+      {},
+      config,
+    ),
+};
+
+/** @deprecated Use studyMapApi — kb id is no longer required */
+export const conceptsApi = {
+  getMap: (kbId: string, includeBonus = false, config?: AxiosRequestConfig) =>
+    api.get<ConceptMapData>(`/api/kb/${kbId}/concepts`, {
+      ...config,
+      params: { include_bonus: includeBonus },
+    }),
+  getNext: (kbId: string, includeBonus = false, config?: AxiosRequestConfig) =>
+    api.get<ConceptNode>(`/api/kb/${kbId}/concepts/next`, {
+      ...config,
+      params: { include_bonus: includeBonus },
+    }),
+  updateProgress: (
+    kbId: string,
+    conceptId: string,
+    status: "available" | "in_progress" | "mastered",
+    config?: AxiosRequestConfig,
+  ) =>
+    api.patch<ConceptNode>(
+      `/api/kb/${kbId}/concepts/${conceptId}/progress`,
+      { status },
+      config,
+    ),
+};

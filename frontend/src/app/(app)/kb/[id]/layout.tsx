@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
-import { Files, MessageSquare } from "lucide-react";
+import { Files, Map, MessageSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export default function KBLayout({ children }: { children: React.ReactNode }) {
@@ -13,6 +13,7 @@ export default function KBLayout({ children }: { children: React.ReactNode }) {
   const isChat = pathname.endsWith("/chat");
 
   const tabs = [
+    { href: "/map", label: "Study map", icon: Map },
     { href: `/kb/${id}/chat`, label: "Chat", icon: MessageSquare },
     { href: `/kb/${id}/docs`, label: "Documents", icon: Files },
   ];

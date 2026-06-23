@@ -21,10 +21,10 @@ import type { Message } from "@/lib/types";
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 const SUGGESTED_PROMPTS = [
-  "Summarize the key points",
-  "What are the main risks?",
-  "List any deadlines or dates",
-  "Who are the parties involved?",
+  "When should I use sliding window vs two pointers?",
+  "Walk me through the approach — don't give the full solution",
+  "What's the time complexity of this pattern?",
+  "Which LeetCode problems should I practice next?",
 ];
 
 export default function ChatPage({ params }: { params: Promise<{ id: string }> }) {
@@ -50,6 +50,7 @@ function ChatPageInner({ kbId }: { kbId: string }) {
   const queryClient = useQueryClient();
   const { getToken, isLoaded, isSignedIn } = useAuth();
   const selectedConvId = searchParams.get("conversation");
+  const conceptSlug = searchParams.get("concept");
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [conversationId, setConversationId] = useState<string | null>(null);
@@ -233,7 +234,7 @@ function ChatPageInner({ kbId }: { kbId: string }) {
 
       await consumeSSEStream(
         `${API_URL}/api/kb/${kbId}/query`,
-        { question, session_id: conversationId ?? undefined },
+        { question, session_id: conversationId ?? undefined, concept_slug: conceptSlug ?? undefined },
         token,
         (tokenChunk) => {
           setMessages((current) =>
@@ -274,7 +275,8 @@ function ChatPageInner({ kbId }: { kbId: string }) {
           });
 
           if (!selectedConvId) {
-            router.replace(`/kb/${kbId}/chat?conversation=${conversation_id}`);
+            const conceptQuery = conceptSlug ? `&concept=${encodeURIComponent(conceptSlug)}` : "";
+            router.replace(`/kb/${kbId}/chat?conversation=${conversation_id}${conceptQuery}`);
           }
 
           queryClient.invalidateQueries({ queryKey: ["conversations", kbId] });
@@ -311,6 +313,11 @@ function ChatPageInner({ kbId }: { kbId: string }) {
 
   return (
     <section className="flex h-full min-h-0 flex-col overflow-hidden bg-canvas/60">
+      {conceptSlug ? (
+        <div className="border-b-2 border-ink bg-mint px-4 py-2 text-center text-xs font-black uppercase tracking-[0.14em] text-ink">
+          Socratic tutor · {conceptSlug.replace(/-/g, " ")}
+        </div>
+      ) : null}
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-8">
         {historyLoading ? (
           <CenteredState>
@@ -331,14 +338,14 @@ function ChatPageInner({ kbId }: { kbId: string }) {
             </motion.div>
             <div className="inline-flex items-center gap-2 rounded-full bg-ink px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-cream">
               <Sparkles className="size-4" />
-              Ready for evidence
+              Ready to learn
             </div>
             <p className="font-heading text-4xl font-black tracking-[-0.04em] text-ink">
-              Ask your knowledge base
+              Ask your mentor
             </p>
             <p className="max-w-sm text-sm font-semibold leading-6 text-ink/55">
-              Start by asking a question about your uploaded documents. Answers
-              will be sourced directly from your content.
+              Ask for hints on a pattern or problem. Answers are grounded in your
+              notes with citations — no full solutions unless you ask.
             </p>
             <div className="mt-2 flex max-w-lg flex-wrap items-center justify-center gap-2">
               {SUGGESTED_PROMPTS.map((prompt, i) => (
