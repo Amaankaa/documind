@@ -3,7 +3,7 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* DocuMind brand palette — single source of truth.
+/* AlgoMentor brand palette — single source of truth.
    Registered as theme colors so utilities (bg-ink, text-ink/45, border-ink/10)
    and the var(--color-*) references in offset shadows / gradients all resolve. */
 @theme {

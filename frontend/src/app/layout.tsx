@@ -20,8 +20,9 @@ const archivo = Archivo({
 });
 
 export const metadata: Metadata = {
-  title: "DocuMind — AI Knowledge Base",
-  description: "Ask your documents anything. Powered by RAG.",
+  title: "AlgoMentor — Big-Tech Interview Prep",
+  description:
+    "Graph-guided DSA study paths, community notes, and AI tutoring for coding interviews.",
 };
 
 const signInUrl = process.env.NEXT_PUBLIC_CLERK_SIGN_IN_URL ?? "/sign-in";
@@ -30,12 +31,12 @@ const signUpUrl = process.env.NEXT_PUBLIC_CLERK_SIGN_UP_URL ?? "/sign-up";
 const signInFallbackRedirectUrl =
   process.env.NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL ??
   process.env.NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL ??
-  "/dashboard";
+  "/map";
 
 const signUpFallbackRedirectUrl =
   process.env.NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL ??
   process.env.NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL ??
-  "/onboarding";
+  "/map";
 
 export default function RootLayout({
   children,

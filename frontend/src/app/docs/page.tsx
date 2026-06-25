@@ -16,6 +16,7 @@ import {
   ShieldCheck,
   UploadCloud,
 } from "lucide-react";
+import { PRODUCT_NAME, PRODUCT_TAGLINE } from "@/lib/brand";
 
 const NAV = [
   { id: "overview", label: "Overview" },
@@ -23,6 +24,7 @@ const NAV = [
   { id: "knowledge", label: "Knowledge Bases" },
   { id: "documents", label: "Documents" },
   { id: "querying", label: "Querying" },
+  { id: "concepts", label: "Study map" },
   { id: "models", label: "Models" },
 ];
 
@@ -53,6 +55,15 @@ const endpoints = [
     items: [
       { method: "POST", path: "/api/kb/:id/query", description: "Stream a cited RAG answer with Server-Sent Events." },
       { method: "GET", path: "/api/conversations", description: "List saved conversations for a knowledge base." },
+    ],
+  },
+  {
+    group: "Study map",
+    id: "concepts",
+    icon: <BookOpen className="size-5" />,
+    items: [
+      { method: "GET", path: "/api/kb/:id/concepts", description: "Interview pattern DAG with progress, GitHub links, and next recommendation." },
+      { method: "PATCH", path: "/api/kb/:id/concepts/:conceptId/progress", description: "Update mastery status (available, in_progress, mastered)." },
     ],
   },
 ];
@@ -131,17 +142,17 @@ export default function DocsPage() {
             <span className="grid size-10 place-items-center rounded-full bg-ink text-cream">
               <BrainCircuit className="size-5" />
             </span>
-            <span className="font-heading text-lg font-black">DocuMind</span>
+            <span className="font-heading text-lg font-black">{PRODUCT_NAME}</span>
             <span className="hidden text-sm font-black uppercase tracking-[0.18em] text-ink/35 sm:inline">
               Docs
             </span>
           </Link>
           <div className="flex items-center gap-3">
             <Link href="/#workflow" className="hidden text-sm font-bold text-ink/60 hover:text-ink md:block">
-              Product
+              How it works
             </Link>
             <Link href="/sign-up" className="rounded-full bg-ink px-5 py-2.5 text-sm font-black text-cream">
-              Start free
+              Start prepping
             </Link>
           </div>
         </div>
@@ -191,11 +202,12 @@ export default function DocsPage() {
                 API reference
               </div>
               <h1 className="font-heading text-6xl font-black leading-[0.9] tracking-[-0.06em] md:text-8xl">
-                Wire DocuMind into anything.
+                {PRODUCT_NAME} API
               </h1>
               <p className="mt-6 max-w-2xl text-lg font-semibold leading-8 text-ink/68">
-                Ingest documents, manage knowledge bases, and stream cited RAG
-                answers from your own product surface.
+                {PRODUCT_TAGLINE}. Ingest notes, manage prep workspaces, stream
+                cited tutor responses, and wire the interview study map into your
+                own tools.
               </p>
             </motion.div>
           </section>
@@ -247,11 +259,12 @@ export default function DocsPage() {
             <div className="rounded-[3rem] border-2 border-ink bg-ink p-8 text-cream shadow-[16px_16px_0_var(--color-sun)] md:p-10">
               <ShieldCheck className="mb-6 size-10 text-mint" />
               <h2 className="font-heading text-4xl font-black tracking-[-0.04em]">
-                Keep citations attached to the magic.
+                Hints with citations — not hallucinations.
               </h2>
               <p className="mt-4 max-w-2xl font-medium leading-7 text-white/65">
-                Query responses stream tokens first, then return sources so your
-                interface can show exactly which document chunks backed the answer.
+                Query responses stream tokens first, then return sources from your
+                ingested notes so students can verify every hint against the
+                community knowledge base.
               </p>
               <Link
                 href="/sign-up"
