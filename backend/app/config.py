@@ -30,6 +30,8 @@ class Settings(BaseSettings):
     gemini_api_key: str = ""
     laozhang_api_key: str = ""
     laozhang_base_url: str = "https://api.laozhang.ai/v1"
+    # Fernet secret for encrypting user BYOK keys at rest (32+ random chars).
+    llm_credentials_secret: str = ""
     embedding_model: str = "gemini-embedding-2-preview"
     chat_model: str = "gemini-2.5-flash"
     embedding_dimensions: int = 1536
@@ -50,8 +52,8 @@ class Settings(BaseSettings):
 
     # ── Rate Limiting ─────────────────────────────────────────────────────────
     query_rate_limit: str = "20/minute"
-    # Per-user cap on tutor questions per UTC day (0 = unlimited).
-    query_daily_limit_per_user: int = 50
+    # Per-user cap on tutor questions per UTC day when using the server LLM key (0 = unlimited).
+    query_daily_limit_per_user: int = 3
 
     # ── Sentry ────────────────────────────────────────────────────────────────
     sentry_dsn: str = ""
@@ -63,7 +65,7 @@ class Settings(BaseSettings):
 
     # ── File Upload ───────────────────────────────────────────────────────────
     max_upload_bytes: int = 10 * 1024 * 1024  # 10 MB
-    max_chunks_per_kb: int = 100
+    max_chunks_per_kb: int = 15
     community_kb_github_repo: str = "BemnetMussa/algorithm-knowledge-base"
     community_kb_github_branch: str = "main"
     # This repo — bundled notes live under contrib/algorithm-knowledge-base/

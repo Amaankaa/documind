@@ -7,7 +7,8 @@ import { api } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import ApiKeysPanel from "@/components/app/ApiKeysPanel";
-import { AlertCircle, Building2, Key, User } from "lucide-react";
+import LlmKeyPanel from "@/components/app/LlmKeyPanel";
+import { AlertCircle, Building2, Bot, Key, User } from "lucide-react";
 
 interface OrgData {
   id: string;
@@ -81,6 +82,10 @@ export default function SettingsPage() {
               No organization linked. Complete onboarding first.
             </div>
           )}
+        </SettingsCard>
+
+        <SettingsCard icon={<Bot className="size-5" />} label="Tutor API Key" color="bg-mint">
+          <LlmKeyPanel />
         </SettingsCard>
 
         <SettingsCard icon={<Key className="size-5" />} label="API Keys" color="bg-lilac">

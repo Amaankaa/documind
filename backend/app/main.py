@@ -20,6 +20,7 @@ from app.routers import (
     evaluation,
     feedback,
     kb,
+    llm_credentials,
     org,
     query,
     study_map,
@@ -86,6 +87,7 @@ app.include_router(query.router)
 app.include_router(conversations.router)
 app.include_router(feedback.router)
 app.include_router(api_keys.router)
+app.include_router(llm_credentials.router)
 app.include_router(evaluation.router)
 app.include_router(concepts.router)
 

@@ -59,6 +59,7 @@ pgvector.sqlalchemy.Vector = _FakeVector          # type: ignore[misc]
 # Also patch the settings so module-level imports don't blow up
 # trying to read .env secrets that aren't present in CI.
 os.environ.setdefault("GEMINI_API_KEY", "fake-gemini-key")
+os.environ.setdefault("LLM_CREDENTIALS_SECRET", "test-byok-encryption-secret")
 os.environ.setdefault("CLERK_SECRET_KEY", "fake-clerk-key")
 os.environ.setdefault("CLERK_JWKS_URL", "https://fake.clerk.dev/.well-known/jwks.json")
 os.environ.setdefault("SUPABASE_URL", "https://fake.supabase.co")
