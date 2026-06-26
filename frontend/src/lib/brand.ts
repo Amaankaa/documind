@@ -7,8 +7,9 @@ export const KNOWLEDGE_BASE_REPO =
   "https://github.com/BemnetMussa/algorithm-knowledge-base";
 export const KNOWLEDGE_BASE_NAME = "Algorithm Knowledge Base";
 
-/** Update when you publish the open-source repo */
-export const ALGOMENTOR_REPO = "https://github.com/your-org/algomentor";
+/** AlgoMentor app repo — bundled notes live under contrib/algorithm-knowledge-base */
+export const ALGOMENTOR_REPO = "https://github.com/Amaankaa/documind";
+export const BUNDLED_NOTES_REPO = `${ALGOMENTOR_REPO}/tree/main/contrib/algorithm-knowledge-base`;
 
 export const OPEN_CONCEPTS_URL = `${ALGOMENTOR_REPO}/blob/main/OPEN_CONCEPTS.md`;
 export const CONTRIBUTING_URL = `${ALGOMENTOR_REPO}/blob/main/CONTRIBUTING.md`;

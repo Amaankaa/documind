@@ -19,6 +19,11 @@ def _repo_url() -> str:
     return f"https://github.com/{settings.community_kb_github_repo}"
 
 
+def _algomentor_repo_url() -> str:
+    settings = get_settings()
+    return f"https://github.com/{settings.algomentor_github_repo}"
+
+
 def _raw_base() -> str:
     settings = get_settings()
     return (
@@ -37,7 +42,13 @@ class GitHubResource:
 
     @property
     def blob_url(self) -> str:
-        return f"{_repo_url()}/blob/{get_settings().community_kb_github_branch}/{self.path}"
+        settings = get_settings()
+        if self.bundled_path:
+            return (
+                f"{_algomentor_repo_url()}/blob/{settings.algomentor_github_branch}"
+                f"/contrib/algorithm-knowledge-base/{self.bundled_path}"
+            )
+        return f"{_repo_url()}/blob/{settings.community_kb_github_branch}/{self.path}"
 
     @property
     def raw_url(self) -> str:
@@ -169,7 +180,7 @@ def resources_for_slug(slug: str) -> list[dict]:
             "contributor": r.contributor,
             "kind": r.kind,
             "bundled": r.bundled_path is not None,
-            "repo_url": _repo_url(),
+            "repo_url": _algomentor_repo_url() if r.bundled_path else _repo_url(),
         }
         for r in items
     ]

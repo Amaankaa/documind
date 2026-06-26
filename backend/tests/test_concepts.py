@@ -97,11 +97,11 @@ def test_resources_for_slug_includes_greedy_and_bit_manipulation():
 
     greedy = resources_for_slug("greedy")
     assert len(greedy) >= 1
-    assert "greedy/greedy.md" in greedy[0]["url"]
+    assert "contrib/algorithm-knowledge-base/greedy/greedy.md" in greedy[0]["url"]
     assert greedy[0]["contributor"] == "@Amanuel-Merara"
 
     bitwise = resources_for_slug("bit-manipulation")
-    assert any("bit-manipulation" in r["url"] for r in bitwise)
+    assert any("contrib/algorithm-knowledge-base/bit-manipulation" in r["url"] for r in bitwise)
     assert any(r["contributor"] == "@Amanuel-Merara" for r in bitwise)
 
 

@@ -66,6 +66,9 @@ class Settings(BaseSettings):
     max_chunks_per_kb: int = 100
     community_kb_github_repo: str = "BemnetMussa/algorithm-knowledge-base"
     community_kb_github_branch: str = "main"
+    # This repo — bundled notes live under contrib/algorithm-knowledge-base/
+    algomentor_github_repo: str = "Amaankaa/documind"
+    algomentor_github_branch: str = "main"
     community_sync_on_startup: bool = False
     community_sync_interval_hours: float = 6.0  # 0 = disable Celery beat schedule
     allowed_mime_types: list[str] = [
