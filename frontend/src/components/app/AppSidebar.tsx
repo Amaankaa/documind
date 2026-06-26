@@ -9,6 +9,8 @@ import { toast } from "sonner";
 import {
   BarChart3,
   BrainCircuit,
+  ChevronLeft,
+  ChevronRight,
   Clock,
   Files,
   FlaskConical,
@@ -34,6 +36,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+
+const SIDEBAR_COLLAPSED_KEY = "algomentor.sidebarCollapsed";
 
 interface KnowledgeBaseSummary {
   id: string;
@@ -77,6 +81,19 @@ export function AppSidebar() {
   const selectedConversationId = searchParams.get("conversation");
   const currentKbId = getCurrentKbId(pathname);
   const [clearOpen, setClearOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "true",
+  );
+
+  const toggleCollapsed = () => {
+    setCollapsed((value) => {
+      const next = !value;
+      localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(next));
+      return next;
+    });
+  };
 
   const { data: me } = useMe();
 
@@ -187,109 +204,139 @@ export function AppSidebar() {
   const hasConversations = !!conversations && conversations.length > 0;
 
   return (
-    <aside className="flex h-dvh w-72 shrink-0 flex-col overflow-hidden border-r-2 border-ink bg-cream text-ink">
-      <div className="shrink-0 px-4 py-4">
-        <Link href="/map" className="mb-4 flex items-center gap-3">
-          <div className="grid size-10 place-items-center rounded-full bg-ink text-cream shadow-[5px_5px_0_var(--color-sun)]">
-            <BrainCircuit className="size-5" />
-          </div>
-          <div>
-            <div className="text-sm font-black leading-none">{PRODUCT_NAME}</div>
-            <div className="mt-1 text-[10px] font-black uppercase tracking-[0.18em] text-ink/55">
-              Workspace
+    <aside
+      className={`flex h-dvh shrink-0 flex-col overflow-hidden border-r-2 border-ink bg-cream text-ink transition-[width] duration-200 ease-out ${
+        collapsed ? "w-20" : "w-72"
+      }`}
+    >
+      <div className={collapsed ? "shrink-0 px-3 py-4" : "shrink-0 px-4 py-4"}>
+        <div className={collapsed ? "mb-4 flex flex-col items-center gap-3" : "mb-4 flex items-center gap-2"}>
+          <Link
+            href="/map"
+            className={collapsed ? "grid size-11 place-items-center" : "flex min-w-0 flex-1 items-center gap-3"}
+            title={PRODUCT_NAME}
+          >
+            <div className="grid size-10 shrink-0 place-items-center rounded-full bg-ink text-cream shadow-[5px_5px_0_var(--color-sun)]">
+              <BrainCircuit className="size-5" />
             </div>
-          </div>
-        </Link>
+            {!collapsed && (
+              <div className="min-w-0">
+                <div className="truncate text-sm font-black leading-none">{PRODUCT_NAME}</div>
+                <div className="mt-1 text-[10px] font-black uppercase tracking-[0.18em] text-ink/55">
+                  Workspace
+                </div>
+              </div>
+            )}
+          </Link>
+          <button
+            type="button"
+            onClick={toggleCollapsed}
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            className="grid size-9 shrink-0 place-items-center rounded-full border-2 border-ink bg-cream text-ink shadow-[3px_3px_0_var(--color-ink)] transition hover:-translate-y-0.5 hover:bg-sun/40"
+          >
+            {collapsed ? <ChevronRight className="size-4" /> : <ChevronLeft className="size-4" />}
+          </button>
+        </div>
 
         <Link
           href={newChatHref}
-          className="flex w-full items-center gap-2 rounded-full border-2 border-ink bg-sun px-4 py-2 text-sm font-black text-ink shadow-[4px_4px_0_var(--color-ink)] transition hover:-translate-y-0.5"
+          title="New chat"
+          className={`flex w-full items-center rounded-full border-2 border-ink bg-sun text-sm font-black text-ink shadow-[4px_4px_0_var(--color-ink)] transition hover:-translate-y-0.5 ${
+            collapsed ? "justify-center px-0 py-2.5" : "gap-2 px-4 py-2"
+          }`}
         >
           <Plus className="size-4 shrink-0" />
-          New chat
+          {collapsed ? <span className="sr-only">New chat</span> : "New chat"}
         </Link>
       </div>
 
-      <div className="flex shrink-0 items-center gap-2 px-4 pb-2">
-        <Clock className="size-4 text-ink/70" />
-        <span className="text-xs font-black uppercase tracking-[0.18em] text-ink/70">
-          Recent chats
-        </span>
-        {hasConversations && (
-          <button
-            type="button"
-            onClick={() => setClearOpen(true)}
-            className="ml-auto cursor-pointer rounded-full px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-ink/45 transition-colors hover:bg-coral/40 hover:text-ink"
-            title="Clear all chat history"
-          >
-            Clear all
-          </button>
-        )}
-      </div>
+      {!collapsed && (
+        <>
+          <div className="flex shrink-0 items-center gap-2 px-4 pb-2">
+            <Clock className="size-4 text-ink/70" />
+            <span className="text-xs font-black uppercase tracking-[0.18em] text-ink/70">
+              Recent chats
+            </span>
+            {hasConversations && (
+              <button
+                type="button"
+                onClick={() => setClearOpen(true)}
+                className="ml-auto cursor-pointer rounded-full px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-ink/45 transition-colors hover:bg-coral/40 hover:text-ink"
+                title="Clear all chat history"
+              >
+                Clear all
+              </button>
+            )}
+          </div>
 
-      <div className="shrink-0 px-3 pb-2">
-        <div className="h-0.5 bg-ink/10" />
-      </div>
+          <div className="shrink-0 px-3 pb-2">
+            <div className="h-0.5 bg-ink/10" />
+          </div>
 
-      <div className="min-h-0 flex-1 space-y-0.5 overflow-y-auto px-3 py-1">
-        {isLoading ? (
-          <div className="space-y-1.5 pt-1">
-            {[...Array(5)].map((_, i) => (
-              <Skeleton key={i} className="h-12 w-full rounded-2xl bg-ink/10" />
-            ))}
+          <div className="min-h-0 flex-1 space-y-0.5 overflow-y-auto px-3 py-1">
+            {isLoading ? (
+              <div className="space-y-1.5 pt-1">
+                {[...Array(5)].map((_, i) => (
+                  <Skeleton key={i} className="h-12 w-full rounded-2xl bg-ink/10" />
+                ))}
+              </div>
+            ) : isError ? (
+              <div className="rounded-2xl border-2 border-ink bg-coral p-3 text-xs font-black leading-5 text-ink">
+                Could not load recent chats.
+              </div>
+            ) : !conversations || conversations.length === 0 ? (
+              <div className="flex flex-col items-center justify-center gap-2 px-2 py-10 text-center">
+                <div className="flex size-10 items-center justify-center rounded-2xl border-2 border-ink bg-mint">
+                  <MessageSquare className="size-4" />
+                </div>
+                <p className="text-xs font-bold leading-relaxed text-ink/65">
+                  Recent conversations will appear here.
+                </p>
+              </div>
+            ) : (
+              conversations.map((conversation) => (
+                <ConversationLink
+                  key={conversation.id}
+                  conversation={conversation}
+                  active={conversation.id === selectedConversationId}
+                  onDelete={() => deleteOne.mutate(conversation.id)}
+                  deleting={deleteOne.isPending && deleteOne.variables === conversation.id}
+                />
+              ))
+            )}
           </div>
-        ) : isError ? (
-          <div className="rounded-2xl border-2 border-ink bg-coral p-3 text-xs font-black leading-5 text-ink">
-            Could not load recent chats.
-          </div>
-        ) : !conversations || conversations.length === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-2 px-2 py-10 text-center">
-            <div className="flex size-10 items-center justify-center rounded-2xl border-2 border-ink bg-mint">
-              <MessageSquare className="size-4" />
-            </div>
-            <p className="text-xs font-bold leading-relaxed text-ink/65">
-              Recent conversations will appear here.
-            </p>
-          </div>
-        ) : (
-          conversations.map((conversation) => (
-            <ConversationLink
-              key={conversation.id}
-              conversation={conversation}
-              active={conversation.id === selectedConversationId}
-              onDelete={() => deleteOne.mutate(conversation.id)}
-              deleting={deleteOne.isPending && deleteOne.variables === conversation.id}
-            />
-          ))
-        )}
-      </div>
+        </>
+      )}
+
+      {collapsed && <div className="min-h-0 flex-1" />}
 
       <div className="shrink-0 border-t-2 border-ink/10 px-3 py-3">
         <div className="space-y-1">
-          <BottomLink href={mapHref} active={pathname.endsWith("/map")} icon={<Map className="size-4" />}>
+          <BottomLink collapsed={collapsed} href={mapHref} active={pathname.endsWith("/map")} icon={<Map className="size-4" />}>
             Study map
           </BottomLink>
-          <BottomLink href={workspaceHref} active={pathname === "/dashboard"} icon={<LayoutDashboard className="size-4" />}>
+          <BottomLink collapsed={collapsed} href={workspaceHref} active={pathname === "/dashboard"} icon={<LayoutDashboard className="size-4" />}>
             My workspace
           </BottomLink>
-          <BottomLink href={docsHref} active={pathname.endsWith("/docs")} icon={<Files className="size-4" />}>
+          <BottomLink collapsed={collapsed} href={docsHref} active={pathname.endsWith("/docs")} icon={<Files className="size-4" />}>
             My documents
           </BottomLink>
-          <BottomLink href={evalHref} active={pathname.endsWith("/eval")} icon={<FlaskConical className="size-4" />}>
+          <BottomLink collapsed={collapsed} href={evalHref} active={pathname.endsWith("/eval")} icon={<FlaskConical className="size-4" />}>
             Evaluation
           </BottomLink>
-          <BottomLink href="/analytics" active={pathname === "/analytics"} icon={<BarChart3 className="size-4" />}>
+          <BottomLink collapsed={collapsed} href="/analytics" active={pathname === "/analytics"} icon={<BarChart3 className="size-4" />}>
             Analytics
           </BottomLink>
-          <BottomLink href="/settings" active={pathname === "/settings"} icon={<Settings className="size-4" />}>
+          <BottomLink collapsed={collapsed} href="/settings" active={pathname === "/settings"} icon={<Settings className="size-4" />}>
             Settings
           </BottomLink>
         </div>
 
-        <div className="mt-3 flex items-center gap-2">
-          <div className="flex flex-1 items-center gap-2 rounded-full bg-ink/5 p-2">
+        <div className={collapsed ? "mt-3 flex flex-col items-center gap-2" : "mt-3 flex items-center gap-2"}>
+          <div className={collapsed ? "flex items-center justify-center rounded-full bg-ink/5 p-2" : "flex flex-1 items-center gap-2 rounded-full bg-ink/5 p-2"}>
             <UserButton />
-            <span className="truncate text-sm font-bold text-ink/75">
+            <span className={collapsed ? "sr-only" : "truncate text-sm font-bold text-ink/75"}>
               Account
             </span>
           </div>
@@ -401,24 +448,31 @@ function BottomLink({
   href,
   active,
   icon,
+  collapsed,
   children,
 }: {
   href: string;
   active: boolean;
   icon: ReactNode;
+  collapsed: boolean;
   children: ReactNode;
 }) {
+  const label = typeof children === "string" ? children : undefined;
+
   return (
     <Link
       href={href}
-      className={`flex items-center gap-2 rounded-2xl px-3 py-2 text-sm font-black transition ${
+      title={label}
+      className={`flex items-center rounded-2xl text-sm font-black transition ${
+        collapsed ? "justify-center px-0 py-2.5" : "gap-2 px-3 py-2"
+      } ${
         active
           ? "bg-ink text-cream"
           : "text-ink/75 hover:bg-ink/5 hover:text-ink"
       }`}
     >
       {icon}
-      {children}
+      {collapsed ? <span className="sr-only">{children}</span> : children}
     </Link>
   );
 }
