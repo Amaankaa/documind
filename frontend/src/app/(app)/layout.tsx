@@ -7,6 +7,7 @@ import { AppSidebar } from "@/components/app/AppSidebar";
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isChatRoute = /^\/kb\/[^/]+\/chat$/.test(pathname);
+  const isMapRoute = pathname === "/map";
   const contentRef = useRef<HTMLDivElement>(null);
 
   // Prevent the overflow-hidden wrapper from ever accumulating scrollTop.
@@ -38,7 +39,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
         <main
           className={`relative z-10 min-h-0 flex-1 ${
-            isChatRoute ? "overflow-hidden" : "overflow-auto"
+            isChatRoute || isMapRoute ? "overflow-hidden" : "overflow-auto"
           }`}
         >
           {children}

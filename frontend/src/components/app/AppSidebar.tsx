@@ -14,12 +14,15 @@ import {
   FlaskConical,
   LayoutDashboard,
   Loader2,
+  Map,
   MessageSquare,
   Plus,
   Settings,
   Trash2,
 } from "lucide-react";
+import { useMe } from "@/hooks/useMe";
 import { api, conversationsApi, type ConversationSummary } from "@/lib/api";
+import { PRODUCT_NAME } from "@/lib/brand";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ThemeToggle } from "@/components/app/ThemeToggle";
 import {
@@ -74,6 +77,8 @@ export function AppSidebar() {
   const selectedConversationId = searchParams.get("conversation");
   const currentKbId = getCurrentKbId(pathname);
   const [clearOpen, setClearOpen] = useState(false);
+
+  const { data: me } = useMe();
 
   const { data: conversations, isLoading, isError } = useQuery({
     queryKey: ["conversations", "all"],
@@ -134,10 +139,13 @@ export function AppSidebar() {
     staleTime: 30_000,
   });
 
-  const resolvedKbId = currentKbId ?? conversations?.[0]?.kb_id ?? firstKbId ?? null;
-  const newChatHref = resolvedKbId ? `/kb/${resolvedKbId}/chat` : "/dashboard";
-  const docsHref = resolvedKbId ? `/kb/${resolvedKbId}/docs` : "/dashboard";
-  const evalHref = resolvedKbId ? `/kb/${resolvedKbId}/eval` : "/dashboard";
+  const communityKbId = me?.community_kb_id ?? null;
+  const personalKbId = me?.personal_kb_id ?? currentKbId ?? conversations?.[0]?.kb_id ?? firstKbId ?? null;
+  const newChatHref = communityKbId ? `/kb/${communityKbId}/chat` : "/map";
+  const mapHref = "/map";
+  const workspaceHref = "/dashboard";
+  const docsHref = personalKbId ? `/kb/${personalKbId}/docs` : "/dashboard";
+  const evalHref = personalKbId ? `/kb/${personalKbId}/eval` : "/dashboard";
 
   // Drop a deleted conversation out of every cached list so the sidebar updates
   // instantly, without waiting for a refetch.
@@ -181,12 +189,12 @@ export function AppSidebar() {
   return (
     <aside className="flex h-dvh w-72 shrink-0 flex-col overflow-hidden border-r-2 border-ink bg-cream text-ink">
       <div className="shrink-0 px-4 py-4">
-        <Link href="/dashboard" className="mb-4 flex items-center gap-3">
+        <Link href="/map" className="mb-4 flex items-center gap-3">
           <div className="grid size-10 place-items-center rounded-full bg-ink text-cream shadow-[5px_5px_0_var(--color-sun)]">
             <BrainCircuit className="size-5" />
           </div>
           <div>
-            <div className="text-sm font-black leading-none">DocuMind</div>
+            <div className="text-sm font-black leading-none">{PRODUCT_NAME}</div>
             <div className="mt-1 text-[10px] font-black uppercase tracking-[0.18em] text-ink/55">
               Workspace
             </div>
@@ -258,11 +266,14 @@ export function AppSidebar() {
 
       <div className="shrink-0 border-t-2 border-ink/10 px-3 py-3">
         <div className="space-y-1">
-          <BottomLink href="/dashboard" active={pathname === "/dashboard"} icon={<LayoutDashboard className="size-4" />}>
-            Dashboard
+          <BottomLink href={mapHref} active={pathname.endsWith("/map")} icon={<Map className="size-4" />}>
+            Study map
+          </BottomLink>
+          <BottomLink href={workspaceHref} active={pathname === "/dashboard"} icon={<LayoutDashboard className="size-4" />}>
+            My workspace
           </BottomLink>
           <BottomLink href={docsHref} active={pathname.endsWith("/docs")} icon={<Files className="size-4" />}>
-            Documents
+            My documents
           </BottomLink>
           <BottomLink href={evalHref} active={pathname.endsWith("/eval")} icon={<FlaskConical className="size-4" />}>
             Evaluation

@@ -17,14 +17,14 @@ export default function SignInPage() {
             <span className="grid size-12 place-items-center rounded-full bg-ink text-cream shadow-[6px_6px_0_var(--color-sun)]">
               <BrainCircuit className="size-6" />
             </span>
-            <span className="font-heading text-2xl font-black">DocuMind</span>
+            <span className="font-heading text-2xl font-black">AlgoMentor</span>
           </Link>
           <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-ink px-4 py-2 text-xs font-black uppercase tracking-[0.22em] text-cream">
             <Sparkles className="size-4" />
             Welcome back
           </div>
           <h1 className="font-heading text-7xl font-black leading-[0.9] tracking-[-0.06em]">
-            Reopen the company brain.
+            Pick up where you left off.
           </h1>
           <AuthShowcase />
         </div>

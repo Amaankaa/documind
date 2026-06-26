@@ -43,8 +43,8 @@ export default function SettingsPage() {
           Settings with receipts.
         </h1>
         <p className="mt-4 max-w-xl font-semibold leading-7 text-ink/65">
-          Account identity, workspace metadata, and the security pieces that
-          make the company brain usable.
+          Account identity, workspace metadata, and API keys for your prep
+          workspace.
         </p>
       </motion.div>
 

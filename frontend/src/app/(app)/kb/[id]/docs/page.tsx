@@ -194,10 +194,10 @@ export default function DocsPage() {
           Source vault
         </div>
         <h2 className="font-heading text-5xl font-black leading-none tracking-[-0.055em]">
-          Feed the brain.
+          Feed your prep track.
         </h2>
         <p className="mt-4 max-w-xl font-semibold leading-7 text-ink/65">
-          Upload documents to add them to this knowledge base. DocuMind will
+          Upload lecture notes and materials. AlgoMentor will
           parse, chunk, embed, and keep the proof ready for chat.
         </p>
       </div>
