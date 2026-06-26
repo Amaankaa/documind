@@ -93,9 +93,10 @@ async def stream_rag_response(
     *,
     tutor_mode: bool = False,
     concept_title: str | None = None,
+    user_api_key: str | None = None,
 ) -> AsyncIterator[str]:
     """Yields streamed token deltas from the LLM."""
-    llm = get_chat_llm(streaming=True, temperature=1.0)
+    llm = get_chat_llm(streaming=True, temperature=1.0, api_key=user_api_key)
 
     if chunks:
         context = _build_context(chunks)

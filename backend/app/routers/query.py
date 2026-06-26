@@ -2,24 +2,24 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import datetime, timezone
-from typing import AsyncIterator
+from collections.abc import AsyncIterator
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import get_user_org_flexible
 from app.config import get_settings
 from app.database import get_db
 from app.limiter import limiter
-from app.models import Concept, Conversation, KnowledgeBase, Message, Organization, User
+from app.models import Concept, Conversation, Message, Organization, User
 from app.services.community import get_kb_for_access, get_personal_kb_optional
 from app.services.learning_path import seed_interview_concepts
 from app.services.llm import stream_rag_response
 from app.services.retrieval import retrieve_top_chunks_for_kbs
+from app.services.user_llm_credentials import count_user_questions_today, get_user_api_key
 
 router = APIRouter(prefix="/api/kb", tags=["query"])
 
@@ -35,28 +35,25 @@ class QueryRequest(BaseModel):
     concept_slug: str | None = None  # study-map pattern scope for Socratic tutor
 
 
-async def _enforce_daily_query_budget(user: User, db: AsyncSession) -> None:
-    """Cap LLM tutor usage per user per UTC day (server-side API key protection)."""
+async def _enforce_daily_query_budget(
+    user: User, db: AsyncSession, *, user_api_key: str | None
+) -> None:
+    """Cap tutor usage when billing against the server LLM key."""
+    if user_api_key:
+        return
+
     limit = settings.query_daily_limit_per_user
     if limit <= 0:
         return
-    day_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
-    used = (
-        await db.execute(
-            select(func.count())
-            .select_from(Message)
-            .join(Conversation, Message.conversation_id == Conversation.id)
-            .where(
-                Conversation.user_id == user.id,
-                Message.role == "user",
-                Message.created_at >= day_start,
-            )
-        )
-    ).scalar_one()
+
+    used = await count_user_questions_today(db, user.id)
     if used >= limit:
         raise HTTPException(
             status_code=429,
-            detail=f"Daily limit of {limit} questions reached. Resets at midnight UTC.",
+            detail=(
+                f"Free tutor limit reached ({limit} questions/day). "
+                "Add your own LLM API key in Settings → Tutor API Key for unlimited questions."
+            ),
         )
 
 
@@ -70,7 +67,8 @@ async def query_kb(
     db: AsyncSession = Depends(get_db),
 ):
     user, org = auth
-    await _enforce_daily_query_budget(user, db)
+    user_api_key = await get_user_api_key(db, user.id)
+    await _enforce_daily_query_budget(user, db, user_api_key=user_api_key)
 
     kb = await get_kb_for_access(db, kb_id, org)
 
@@ -162,6 +160,7 @@ async def query_kb(
             history=history,
             tutor_mode=concept_title is not None,
             concept_title=concept_title,
+            user_api_key=user_api_key,
         ):
             full_response.append(token)
             yield f"data: {json.dumps({'token': token})}\n\n"

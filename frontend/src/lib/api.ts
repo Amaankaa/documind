@@ -45,6 +45,26 @@ export const apiKeysApi = {
     api.delete(`/api/api-keys/${id}`, config),
 };
 
+// ── BYOK tutor LLM key ────────────────────────────────────────────────────────
+
+export interface LlmKeyStatus {
+  configured: boolean;
+  provider: string | null;
+  key_hint: string | null;
+  updated_at: string | null;
+  questions_used_today: number;
+  questions_daily_limit: number | null;
+  using_own_key: boolean;
+}
+
+export const llmKeyApi = {
+  status: (config?: AxiosRequestConfig) =>
+    api.get<LlmKeyStatus>("/api/me/llm-key", config),
+  save: (apiKey: string, config?: AxiosRequestConfig) =>
+    api.put<LlmKeyStatus>("/api/me/llm-key", { api_key: apiKey }, config),
+  remove: (config?: AxiosRequestConfig) => api.delete("/api/me/llm-key", config),
+};
+
 // ── Citation context types ────────────────────────────────────────────────────
 
 export interface ChunkContext {

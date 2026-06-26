@@ -3,7 +3,7 @@
 import { Suspense, use, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Loader2, MessageSquare, Sparkles } from "lucide-react";
 import { toast } from "sonner";
@@ -12,6 +12,7 @@ import { MessageBubble } from "@/components/chat/MessageBubble";
 import {
   api,
   conversationsApi,
+  llmKeyApi,
   type ConversationSummary,
   type MessageItem,
 } from "@/lib/api";
@@ -64,6 +65,21 @@ function ChatPageInner({ kbId }: { kbId: string }) {
   const loadedConversationIdRef = useRef<string | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const lastMessageContent = messages[messages.length - 1]?.content;
+
+  const { data: llmKeyStatus } = useQuery({
+    queryKey: ["llm-key"],
+    queryFn: async () => {
+      const token = await getToken();
+      return (await llmKeyApi.status({ headers: { Authorization: `Bearer ${token}` } })).data;
+    },
+    enabled: isLoaded && !!isSignedIn,
+    staleTime: 30_000,
+  });
+
+  const freeRemaining =
+    llmKeyStatus && !llmKeyStatus.using_own_key && llmKeyStatus.questions_daily_limit != null
+      ? Math.max(0, llmKeyStatus.questions_daily_limit - llmKeyStatus.questions_used_today)
+      : null;
 
   const handleFeedback = useCallback(
     async (messageId: string, rating: "positive" | "negative" | null) => {
@@ -281,6 +297,7 @@ function ChatPageInner({ kbId }: { kbId: string }) {
 
           queryClient.invalidateQueries({ queryKey: ["conversations", kbId] });
           queryClient.invalidateQueries({ queryKey: ["conversations", "all"] });
+          queryClient.invalidateQueries({ queryKey: ["llm-key"] });
         },
         (error) => {
           if (error.name === "AbortError") return;
@@ -318,6 +335,17 @@ function ChatPageInner({ kbId }: { kbId: string }) {
           Socratic tutor · {conceptSlug.replace(/-/g, " ")}
         </div>
       ) : null}
+      {freeRemaining !== null && (
+        <div
+          className={`border-b-2 border-ink px-4 py-2 text-center text-xs font-bold ${
+            freeRemaining === 0 ? "bg-coral text-ink" : "bg-sun/50 text-ink"
+          }`}
+        >
+          {freeRemaining === 0
+            ? "Free daily limit reached — add your API key in Settings → Tutor API Key"
+            : `${freeRemaining} free tutor question${freeRemaining === 1 ? "" : "s"} left today`}
+        </div>
+      )}
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-8">
         {historyLoading ? (
           <CenteredState>

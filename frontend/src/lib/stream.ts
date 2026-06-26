@@ -23,8 +23,14 @@ export async function consumeSSEStream(
   });
 
   if (!response.ok || !response.body) {
-    const err = new Error(`Query failed: ${response.statusText}`);
-    onError?.(err);
+    let detail = response.statusText;
+    try {
+      const json = (await response.json()) as { detail?: string };
+      if (json.detail) detail = json.detail;
+    } catch {
+      // non-JSON error body
+    }
+    onError?.(new Error(detail));
     return;
   }
 
