@@ -132,7 +132,7 @@ async def test_me_endpoint_bootstraps_org(client, make_user, mock_auth):
     assert data["org_id"]
     assert data["community_kb_id"]
     assert data["personal_kb_id"]
-    assert data["personal_chunk_limit"] == 100
+    assert data["personal_chunk_limit"] == 15
 
 
 @pytest.mark.asyncio

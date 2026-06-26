@@ -32,6 +32,7 @@ INTERVIEW_CONCEPTS: tuple[ConceptSeed, ...] = (
         title="Hash Maps & Sets",
         description="O(1) lookups for frequency counting, deduplication, and complement searches.",
         order_index=2,
+        prerequisites=("arrays-and-strings",),
     ),
     ConceptSeed(
         slug="bit-manipulation",
@@ -59,7 +60,7 @@ INTERVIEW_CONCEPTS: tuple[ConceptSeed, ...] = (
         title="Sliding Window",
         description="Fixed and variable windows for substring and subarray optimization.",
         order_index=6,
-        prerequisites=("two-pointers",),
+        prerequisites=("two-pointers", "hashing"),
     ),
     ConceptSeed(
         slug="prefix-sums",
@@ -94,6 +95,7 @@ INTERVIEW_CONCEPTS: tuple[ConceptSeed, ...] = (
         title="Linked Lists",
         description="Pointer manipulation, cycle detection, and merge patterns.",
         order_index=11,
+        prerequisites=("two-pointers",),
     ),
     ConceptSeed(
         slug="recursion-backtracking",
@@ -106,21 +108,21 @@ INTERVIEW_CONCEPTS: tuple[ConceptSeed, ...] = (
         title="Trees & BST",
         description="DFS/BFS traversals, BST invariants, and subtree reasoning.",
         order_index=13,
-        prerequisites=("recursion-backtracking",),
+        prerequisites=("recursion-backtracking", "linked-lists"),
     ),
     ConceptSeed(
         slug="heaps",
         title="Heaps / Priority Queue",
         description="Top-k, merge k sorted streams, and scheduling with O(log n) extractions.",
         order_index=14,
-        prerequisites=("arrays-and-strings",),
+        prerequisites=("trees-bst",),
     ),
     ConceptSeed(
         slug="graphs-bfs-dfs",
         title="Graphs: BFS & DFS",
         description="Adjacency representations, connected components, and shortest unweighted paths.",
         order_index=15,
-        prerequisites=("stack-queue", "recursion-backtracking"),
+        prerequisites=("stack-queue", "recursion-backtracking", "hashing", "linked-lists"),
     ),
     ConceptSeed(
         slug="greedy",
@@ -134,7 +136,7 @@ INTERVIEW_CONCEPTS: tuple[ConceptSeed, ...] = (
         title="Dynamic Programming",
         description="1D/2D state transitions, knapsack variants, and overlapping subproblems.",
         order_index=17,
-        prerequisites=("recursion-backtracking",),
+        prerequisites=("recursion-backtracking", "hashing"),
     ),
     ConceptSeed(
         slug="topological-sort",
@@ -158,6 +160,7 @@ INTERVIEW_CONCEPTS: tuple[ConceptSeed, ...] = (
         description="Prefix trees for autocomplete and word-search patterns.",
         order_index=20,
         is_bonus=True,
+        prerequisites=("trees-bst", "arrays-and-strings", "linked-lists"),
     ),
     ConceptSeed(
         slug="intervals",
