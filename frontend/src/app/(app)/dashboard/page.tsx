@@ -70,7 +70,7 @@ export default function WorkspacePage() {
   }, [load]);
 
   const chunkCount = me?.personal_chunk_count ?? usage?.total_chunks ?? 0;
-  const chunkLimit = me?.personal_chunk_limit ?? 100;
+  const chunkLimit = me?.personal_chunk_limit ?? 15;
   const chunkPct = chunkLimit > 0 ? Math.min(100, Math.round((chunkCount / chunkLimit) * 100)) : 0;
   const communityKbId = me?.community_kb_id;
 
