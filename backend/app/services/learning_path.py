@@ -133,6 +133,22 @@ async def seed_interview_concepts(db: AsyncSession) -> int:
             if edge_exists.scalar_one_or_none() is None:
                 db.add(ConceptEdge(prerequisite_id=prereq_id, concept_id=concept_id))
 
+    # Drop stale edges when the catalog prerequisites change.
+    catalog_ids = set(slug_to_id.values())
+    expected: set[tuple[uuid.UUID, uuid.UUID]] = set()
+    for seed in INTERVIEW_CONCEPTS:
+        concept_id = slug_to_id[seed.slug]
+        for prereq_slug in seed.prerequisites:
+            expected.add((slug_to_id[prereq_slug], concept_id))
+
+    edges_result = await db.execute(
+        select(ConceptEdge).where(ConceptEdge.concept_id.in_(catalog_ids))
+    )
+    for edge in edges_result.scalars().all():
+        pair = (edge.prerequisite_id, edge.concept_id)
+        if pair not in expected:
+            await db.delete(edge)
+
     await db.commit()
     return created
 
