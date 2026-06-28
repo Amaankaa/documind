@@ -2,6 +2,8 @@
 
 **Open-source, graph-guided prep for big-tech coding interviews.**
 
+**Live app:** https://app.algomentor.me
+
 AlgoMentor tells you *what* to study next (prerequisite DAG + topological sort), links you to
 *community-written notes* with Python templates and LeetCode picks, and grounds an AI tutor in
 those materials — without giving away full solutions.
@@ -26,13 +28,30 @@ the study map. See [CONTRIBUTING.md](./CONTRIBUTING.md) and [OPEN_CONCEPTS.md](.
 
 ## Features
 
+### Study map & learning path
 - **Interview pattern map** — 17 core + 5 bonus patterns as a prerequisite DAG
+- **Interactive canvas** — zoom, pan, focus mode, balanced layout, progress per node
 - **"Up next" engine** — Kahn's topological sort recommends your next topic
+- **Mastery gating** — practice problems unlock downstream concepts
+- **Concept detail modal** — notes, GitHub links, contributor credits
 - **Community wanted slots** — dashed nodes for patterns needing contributors
-- **GitHub note links** — every concept points to the knowledge-base markdown
-- **RAG chat** — streaming answers with citations (Socratic tutor mode in progress)
-- **Document ingestion** — PDF, DOCX, CSV, TXT, and URL import
-- **Multi-tenant workspaces** — orgs, API keys, analytics, eval harness
+
+### AI tutor
+- **RAG chat** — streaming answers with citations from community corpus
+- **Socratic mode** — concept-scoped tutor grounded in study notes
+- **Daily free tier** — shared LLM key with per-user daily limit
+- **BYOK** — bring your own API key (Fernet-encrypted in Postgres) for unlimited usage
+
+### Workspaces & content
+- **Community corpus** — auto-syncs bundled + GitHub markdown, embeds on startup
+- **Personal workspace** — upload PDF, DOCX, CSV, TXT, or URL for private RAG
+- **Document ingestion** — chunk → embed → pgvector with progress tracking
+- **Multi-tenant orgs** — workspaces, org API keys, usage analytics
+- **Eval harness** — eval sets, generated cases, retrieval quality metrics
+
+### Auth & settings
+- **Clerk** — email/password and Google OAuth (production)
+- **Settings** — tutor API key panel, theme, API keys for programmatic access
 
 ---
 
@@ -42,9 +61,10 @@ the study map. See [CONTRIBUTING.md](./CONTRIBUTING.md) and [OPEN_CONCEPTS.md](.
 |-------|-------------|
 | **Frontend** | Next.js 16, React 19, TypeScript, Tailwind v4, shadcn/ui, Clerk |
 | **Backend** | FastAPI, SQLAlchemy 2.0 async, Alembic |
-| **AI / RAG** | LangChain, Google Gemini, pgvector |
-| **Queue** | Celery + Redis |
+| **AI / RAG** | LangChain, Gemini / LaoZhang (OpenAI-compatible), pgvector |
+| **Queue** | Celery + Redis (local dev); in-process ingestion (production) |
 | **Database** | PostgreSQL 16 + pgvector |
+| **Deploy** | Docker Compose, Caddy, DigitalOcean, GitHub Actions CI/CD |
 
 ---
 
@@ -53,16 +73,16 @@ the study map. See [CONTRIBUTING.md](./CONTRIBUTING.md) and [OPEN_CONCEPTS.md](.
 ### Prerequisites
 
 - Docker + Docker Compose
-- Node.js 20+ and pnpm
+- Node.js 22+ and pnpm
 - Python 3.11+ and [uv](https://github.com/astral-sh/uv)
-- [Clerk](https://clerk.com) account
-- [Google Gemini](https://aistudio.google.com/app/apikey) API key
+- [Clerk](https://clerk.com) account (development keys)
+- [Google Gemini](https://aistudio.google.com/app/apikey) or LaoZhang API key
 
 ### Setup
 
 ```bash
-git clone https://github.com/your-org/algomentor.git
-cd algomentor
+git clone https://github.com/Amaankaa/documind.git
+cd documind
 
 cp backend/.env.example backend/.env
 cp frontend/.env.local.example frontend/.env.local
@@ -73,20 +93,46 @@ docker compose up postgres redis -d
 cd backend && uv sync && uv run alembic upgrade head
 uv run uvicorn app.main:app --reload --port 8000
 
-# separate terminal
+# separate terminal (optional — set USE_CELERY=false to skip)
 uv run celery -A app.tasks.ingest_task worker --loglevel=info
 
 cd frontend && pnpm install && pnpm dev
 ```
 
-- App: http://localhost:3000  
-- API docs: http://localhost:8000/docs  
+- App: http://localhost:3000
+- API docs: http://localhost:8000/docs
 
-### Tests
+### Tests & lint
 
 ```bash
 cd backend && uv run pytest -q
+cd frontend && pnpm lint && pnpm build
 ```
+
+CI runs the same checks on every push and PR (see `.github/workflows/ci.yml`).
+
+---
+
+## Production deployment
+
+See **[DEPLOY.md](./DEPLOY.md)** for:
+
+- DigitalOcean / VPS setup with `docker-compose.prod.yml`
+- Clerk production + DNS
+- Caddy HTTPS
+- GitHub Actions CD (auto-deploy on push to `main`)
+
+---
+
+## Project docs
+
+| Doc | Purpose |
+|-----|---------|
+| [DEPLOY.md](./DEPLOY.md) | Production hosting & CI/CD |
+| [CONTRIBUTING.md](./CONTRIBUTING.md) | Contributor workflow |
+| [OPEN_CONCEPTS.md](./OPEN_CONCEPTS.md) | Claimable patterns |
+| [INTERVIEW_SCOPE.md](./INTERVIEW_SCOPE.md) | What's in scope for the map |
+| [PRD_DocuMind.md](./PRD_DocuMind.md) | Historical product spec (DocuMind era) |
 
 ---
 

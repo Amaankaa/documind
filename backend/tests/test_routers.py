@@ -15,7 +15,11 @@ pytestmark = pytest.mark.asyncio
 async def test_health(client):
     resp = await client.get("/health")
     assert resp.status_code == 200
-    assert resp.json() == {"status": "ok"}
+    data = resp.json()
+    assert data["status"] == "ok"
+    assert "storage" in data
+    assert "storage_ready" in data
+    assert "llm_provider" in data
 
 
 # ── Org ──────────────────────────────────────────────────────────────────────
@@ -80,9 +84,11 @@ async def test_list_kbs(client, make_user, make_org, make_kb, mock_auth):
         resp = await client.get("/api/kb", headers=headers)
     assert resp.status_code == 200
     names = {kb["name"] for kb in resp.json()}
-    assert "KB One" in names
-    assert "KB Two" in names
+    # Legacy org KBs are consolidated into the personal workspace on access.
     assert "My notes" in names
+    assert "KB One" not in names
+    assert "KB Two" not in names
+    assert all(kb["is_personal"] for kb in resp.json())
 
 
 async def test_delete_kb(client, make_user, make_org, make_kb, mock_auth):

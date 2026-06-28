@@ -97,6 +97,9 @@ cd frontend && pnpm install && pnpm dev
 - **TypeScript:** match neo-brutalist UI conventions; run `pnpm lint`
 - Keep PRs focused — one pattern per PR pair when possible
 
+**CI** runs on every push and PR (backend tests + frontend lint/build).  
+**CD** auto-deploys to production on push to `main` when `ENABLE_CD=true` — see [DEPLOY.md](./DEPLOY.md).
+
 ---
 
 ## What not to commit
@@ -119,7 +122,7 @@ Contributors are credited:
 
 ## Questions?
 
-Open a [GitHub Discussion](https://github.com/your-org/algomentor/discussions) or issue.
+Open a [GitHub Discussion](https://github.com/Amaankaa/documind/discussions) or issue.
 For knowledge-base content questions, use their repo's issues.
 
 **Built for learners preparing for big-tech interviews — by learners who've been there.**

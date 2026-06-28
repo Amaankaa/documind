@@ -1,0 +1,58 @@
+# Production stack — Postgres + backend + frontend only (no Redis/Celery).
+# Requires a root `.env` with POSTGRES_PASSWORD and populated backend/.env + frontend/.env.local.
+# See DEPLOY.md for setup.
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: documind
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD}@postgres:5432/documind
+      SYNC_DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/documind
+      LOCAL_STORAGE_DIR: /app/.local_storage
+      USE_CELERY: "false"
+      COMMUNITY_SYNC_ON_STARTUP: "true"
+    volumes:
+      - documind_local_storage:/app/.local_storage
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: >
+      sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - ./frontend/.env.local
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+  documind_local_storage:

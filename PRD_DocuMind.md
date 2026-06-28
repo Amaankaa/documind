@@ -1,5 +1,7 @@
 # PRD — DocuMind: AI-Powered RAG Knowledge Base SaaS
 
+> **Note:** This document describes the original DocuMind RAG platform. The product has since evolved into **[AlgoMentor](https://app.algomentor.me)** — graph-guided interview prep. See [README.md](./README.md) and [DEPLOY.md](./DEPLOY.md) for the current product and deployment.
+
 **Document Version:** 2.1
 **Date:** June 18, 2026
 **Status:** Built — feature-complete MVP, validated by an 87-test backend suite
