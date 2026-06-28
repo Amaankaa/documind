@@ -79,6 +79,7 @@ jobs:
       github.event_name != 'pull_request' &&
       vars.ENABLE_CD == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 90
     environment: production
     steps:
       - name: Deploy over SSH
@@ -87,8 +88,11 @@ jobs:
           host: ${{ secrets.DROPLET_HOST }}
           username: ${{ secrets.DROPLET_USER }}
           key: ${{ secrets.DROPLET_SSH_KEY }}
+          command_timeout: 60m
           script_stop: true
           script: |
+            export DOCKER_BUILDKIT=1
+            export COMPOSE_DOCKER_CLI_BUILD=1
             DEPLOY_PATH="${{ secrets.DEPLOY_PATH }}"
             if [ -z "$DEPLOY_PATH" ]; then DEPLOY_PATH="/root/documind"; fi
             COMPOSE_FILE="docker-compose.prod.yml"
