@@ -16,3 +16,6 @@ export const CONTRIBUTING_URL = `${ALGOMENTOR_REPO}/blob/main/CONTRIBUTING.md`;
 
 export const CORE_PATTERN_COUNT = 17;
 export const BONUS_PATTERN_COUNT = 5;
+
+export const LIVE_APP_URL = "https://app.algomentor.me";
+export const LIVE_API_URL = "https://api.algomentor.me";

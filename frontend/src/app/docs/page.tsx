@@ -1,295 +1,106 @@
-"use client";
-
-import { useState } from "react";
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { ArrowRight, ExternalLink } from "lucide-react";
 import {
-  ArrowRight,
-  BookOpen,
-  BrainCircuit,
-  CheckCircle2,
-  ChevronRight,
-  Code2,
-  Database,
-  KeyRound,
-  MessageSquare,
-  ShieldCheck,
-  UploadCloud,
-} from "lucide-react";
-import { PRODUCT_NAME, PRODUCT_TAGLINE } from "@/lib/brand";
+  BONUS_PATTERN_COUNT,
+  CORE_PATTERN_COUNT,
+  KNOWLEDGE_BASE_NAME,
+  KNOWLEDGE_BASE_REPO,
+  PRODUCT_NAME,
+  PRODUCT_TAGLINE,
+} from "@/lib/brand";
+import { DocCallout, DocCard, DocHero, DocSection } from "@/components/docs/DocsShell";
+import { DOCS_NAV, LIVE_APP_URL } from "@/components/docs/docs-nav";
 
-const NAV = [
-  { id: "overview", label: "Overview" },
-  { id: "auth", label: "Authentication" },
-  { id: "knowledge", label: "Knowledge Bases" },
-  { id: "documents", label: "Documents" },
-  { id: "querying", label: "Querying" },
-  { id: "concepts", label: "Study map" },
-  { id: "models", label: "Models" },
-];
-
-const endpoints = [
-  {
-    group: "Knowledge Bases",
-    id: "knowledge",
-    icon: <Database className="size-5" />,
-    items: [
-      { method: "GET", path: "/api/kb", description: "List knowledge bases for the authenticated organization." },
-      { method: "POST", path: "/api/kb", description: "Create a new knowledge base with a name and optional description." },
-    ],
-  },
-  {
-    group: "Documents",
-    id: "documents",
-    icon: <UploadCloud className="size-5" />,
-    items: [
-      { method: "GET", path: "/api/kb/:id/documents", description: "Fetch uploaded documents and ingestion status." },
-      { method: "POST", path: "/api/kb/:id/documents", description: "Upload a PDF, DOCX, TXT, or CSV file as multipart form data." },
-      { method: "DELETE", path: "/api/kb/:id/documents/:docId", description: "Remove a document and its indexed chunks." },
-    ],
-  },
-  {
-    group: "Querying",
-    id: "querying",
-    icon: <MessageSquare className="size-5" />,
-    items: [
-      { method: "POST", path: "/api/kb/:id/query", description: "Stream a cited RAG answer with Server-Sent Events." },
-      { method: "GET", path: "/api/conversations", description: "List saved conversations for a knowledge base." },
-    ],
-  },
-  {
-    group: "Study map",
-    id: "concepts",
-    icon: <BookOpen className="size-5" />,
-    items: [
-      { method: "GET", path: "/api/kb/:id/concepts", description: "Interview pattern DAG with progress, GitHub links, and next recommendation." },
-      { method: "PATCH", path: "/api/kb/:id/concepts/:conceptId/progress", description: "Update mastery status (available, in_progress, mastered)." },
-    ],
-  },
-];
-
-const modelRows = [
-  { name: "KnowledgeBase", fields: "id, org_id, name, description" },
-  { name: "Document", fields: "id, filename, status, progress, chunk_count" },
-  { name: "Source", fields: "doc_id, filename, chunk_index, excerpt" },
-];
-
-function Method({ method }: { method: string }) {
-  const color =
-    method === "GET"
-      ? "bg-mint"
-      : method === "POST"
-        ? "bg-sun"
-        : "bg-coral";
-
+export default function DocsWelcomePage() {
   return (
-    <span className={`rounded-full border-2 border-ink px-3 py-1 text-xs font-black ${color}`}>
-      {method}
-    </span>
-  );
-}
+    <>
+      <DocHero
+        eyebrow="Documentation"
+        title={`Welcome to ${PRODUCT_NAME}`}
+        description={`${PRODUCT_TAGLINE}. This guide explains what the product does, how to use it, and how the open-source community keeps it growing — in plain language, no engineering degree required.`}
+      />
 
-function Endpoint({
-  method,
-  path,
-  description,
-}: {
-  method: string;
-  path: string;
-  description: string;
-}) {
-  const [open, setOpen] = useState(false);
+      <DocSection title="What is AlgoMentor?">
+        <p>
+          AlgoMentor is a free, open-source interview prep platform. Instead of drowning in hundreds
+          of random coding problems, you follow a <strong>study map</strong> — a visual path that
+          shows which topics build on which, what you have already learned, and what to study next.
+        </p>
+        <p>
+          Each topic links to <strong>community-written notes</strong> (explanations, Python
+          templates, and curated LeetCode problems). When you get stuck, an <strong>AI tutor</strong>{" "}
+          gives hints grounded in those notes — it nudges you toward the solution without dumping
+          the full answer.
+        </p>
+      </DocSection>
 
-  return (
-    <div className="overflow-hidden rounded-[1.5rem] border-2 border-ink bg-cream shadow-[6px_6px_0_var(--color-ink)]">
-      <button
-        onClick={() => setOpen((value) => !value)}
-        className="flex w-full items-center gap-4 p-4 text-left"
-      >
-        <Method method={method} />
-        <code className="min-w-0 flex-1 truncate font-mono text-sm font-bold text-ink">
-          {path}
-        </code>
-        <ChevronRight className={`size-4 transition ${open ? "rotate-90" : ""}`} />
-      </button>
-      {open && (
-        <div className="border-t-2 border-ink bg-white/60 p-4">
-          <p className="font-medium leading-7 text-ink/65">{description}</p>
-          <pre className="mt-4 overflow-x-auto rounded-2xl bg-ink p-4 font-mono text-xs leading-6 text-cream">
-{`Authorization: Bearer <clerk-jwt>
-Content-Type: application/json`}
-          </pre>
-        </div>
-      )}
-    </div>
-  );
-}
-
-export default function DocsPage() {
-  const [activeSection, setActiveSection] = useState("overview");
-
-  return (
-    <div className="relative min-h-screen overflow-hidden bg-canvas text-ink">
-      <div className="pointer-events-none fixed inset-0 z-0">
-        <div className="absolute -left-40 top-0 h-[34rem] w-[34rem] rounded-full bg-ember/25 blur-[90px]" />
-        <div className="absolute right-[-10rem] top-20 h-[36rem] w-[36rem] rounded-full bg-violet/20 blur-[110px]" />
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(20,17,15,0.055)_1px,transparent_1px),linear-gradient(90deg,rgba(20,17,15,0.055)_1px,transparent_1px)] bg-[size:38px_38px]" />
+      <div className="mt-10 grid gap-4 md:grid-cols-3">
+        <DocCard title="Study map">
+          {CORE_PATTERN_COUNT} core patterns + {BONUS_PATTERN_COUNT} bonus topics, connected as a
+          prerequisite graph so you always know what comes next.
+        </DocCard>
+        <DocCard title="Community notes">
+          Explanations live in the open-source {KNOWLEDGE_BASE_NAME}. Anyone can read them; contributors
+          can improve them.
+        </DocCard>
+        <DocCard title="Socratic tutor">
+          Ask questions while you practice. Answers cite the notes you are studying — hints, not
+          spoilers.
+        </DocCard>
       </div>
 
-      <nav className="fixed inset-x-0 top-0 z-50 px-4 pt-4">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between rounded-full border border-ink/10 bg-cream/75 px-4 shadow-[0_20px_80px_rgba(20,17,15,0.12)] backdrop-blur-2xl md:px-6">
-          <Link href="/" className="flex items-center gap-3">
-            <span className="grid size-10 place-items-center rounded-full bg-ink text-cream">
-              <BrainCircuit className="size-5" />
-            </span>
-            <span className="font-heading text-lg font-black">{PRODUCT_NAME}</span>
-            <span className="hidden text-sm font-black uppercase tracking-[0.18em] text-ink/35 sm:inline">
-              Docs
-            </span>
-          </Link>
-          <div className="flex items-center gap-3">
-            <Link href="/#workflow" className="hidden text-sm font-bold text-ink/60 hover:text-ink md:block">
-              How it works
-            </Link>
-            <Link href="/sign-up" className="rounded-full bg-ink px-5 py-2.5 text-sm font-black text-cream">
-              Start prepping
-            </Link>
-          </div>
-        </div>
-      </nav>
+      <DocSection title="Who is this for?">
+        <ul className="list-disc space-y-2 pl-5">
+          <li>Students and self-taught developers preparing for big-tech coding interviews</li>
+          <li>Learners who want structure instead of endless LeetCode lists</li>
+          <li>Contributors who want to write DSA notes and get credited on the map</li>
+          <li>Developers who want to explore or integrate with our API</li>
+        </ul>
+      </DocSection>
 
-      <div className="relative z-10 mx-auto flex max-w-7xl gap-8 px-6 pt-28">
-        <aside className="sticky top-28 hidden h-[calc(100vh-7rem)] w-60 shrink-0 self-start overflow-y-auto pb-8 lg:block">
-          <p className="mb-4 text-xs font-black uppercase tracking-[0.22em] text-ink/45">
-            On this page
-          </p>
-          <nav className="space-y-2">
-            {NAV.map((item) => (
-              <a
-                key={item.id}
-                href={`#${item.id}`}
-                onClick={() => setActiveSection(item.id)}
-                className={`block rounded-full border-2 px-4 py-2 text-sm font-black transition ${
-                  activeSection === item.id
-                    ? "border-ink bg-sun text-ink shadow-[4px_4px_0_var(--color-ink)]"
-                    : "border-transparent text-ink/50 hover:bg-ink/5 hover:text-ink"
-                }`}
-              >
-                {item.label}
-              </a>
-            ))}
-          </nav>
-          <div className="mt-8 rounded-[1.5rem] border-2 border-ink bg-mint p-4 shadow-[6px_6px_0_var(--color-ink)]">
-            <p className="mb-2 text-xs font-black uppercase tracking-[0.18em] text-ink/55">
-              Base URL
-            </p>
-            <code className="break-all font-mono text-xs font-bold">
-              {process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"}
-            </code>
-          </div>
-        </aside>
+      <DocCallout title="Try it live" tone="sun">
+        The app is deployed at{" "}
+        <a href={LIVE_APP_URL} className="font-black underline">
+          app.algomentor.me
+        </a>
+        . You need an account to use the study map and tutor, but{" "}
+        <strong>reading this documentation is always free — no sign-up required</strong>.
+      </DocCallout>
 
-        <main className="min-w-0 flex-1 pb-24">
-          <section id="overview" className="scroll-mt-28">
-            <motion.div
-              initial={{ opacity: 0, y: 24 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.55, ease: "easeOut" }}
-              className="rounded-[3rem] border-2 border-ink bg-sun p-8 shadow-[16px_16px_0_var(--color-ink)] md:p-12"
+      <DocSection title="Explore the docs">
+        <div className="grid gap-3 sm:grid-cols-2">
+          {DOCS_NAV.filter((item) => item.href !== "/docs").map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className="flex items-center justify-between rounded-2xl border-2 border-ink bg-white/70 px-5 py-4 font-bold shadow-[4px_4px_0_var(--color-ink)] transition hover:-translate-y-0.5 hover:bg-cream"
             >
-              <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-ink px-4 py-2 text-xs font-black uppercase tracking-[0.22em] text-cream">
-                <BookOpen className="size-4" />
-                API reference
-              </div>
-              <h1 className="font-heading text-6xl font-black leading-[0.9] tracking-[-0.06em] md:text-8xl">
-                {PRODUCT_NAME} API
-              </h1>
-              <p className="mt-6 max-w-2xl text-lg font-semibold leading-8 text-ink/68">
-                {PRODUCT_TAGLINE}. Ingest notes, manage prep workspaces, stream
-                cited tutor responses, and wire the interview study map into your
-                own tools.
-              </p>
-            </motion.div>
-          </section>
-
-          <section id="auth" className="scroll-mt-28 py-12">
-            <SectionHeader icon={<KeyRound className="size-5" />} title="Authentication" />
-            <div className="rounded-[2rem] border-2 border-ink bg-cream p-6 shadow-[8px_8px_0_var(--color-ink)]">
-              <p className="font-medium leading-7 text-ink/68">
-                All private API calls expect a Clerk JWT in the Authorization
-                header. The frontend already attaches this token through the
-                shared API client and direct upload/query calls.
-              </p>
-              <pre className="mt-5 overflow-x-auto rounded-2xl bg-ink p-5 font-mono text-sm leading-7 text-cream">
-{`Authorization: Bearer <clerk-jwt>`}
-              </pre>
-            </div>
-          </section>
-
-          {endpoints.map((group) => (
-            <section key={group.id} id={group.id} className="scroll-mt-28 py-12">
-              <SectionHeader icon={group.icon} title={group.group} />
-              <div className="space-y-4">
-                {group.items.map((item) => (
-                  <Endpoint key={`${item.method}-${item.path}`} {...item} />
-                ))}
-              </div>
-            </section>
+              {item.label}
+              <ArrowRight className="size-4" />
+            </Link>
           ))}
+        </div>
+      </DocSection>
 
-          <section id="models" className="scroll-mt-28 py-12">
-            <SectionHeader icon={<Code2 className="size-5" />} title="Data Models" />
-            <div className="grid gap-4 md:grid-cols-3">
-              {modelRows.map((row) => (
-                <div
-                  key={row.name}
-                  className="rounded-[1.5rem] border-2 border-ink bg-cream p-5 shadow-[6px_6px_0_var(--color-ink)]"
-                >
-                  <CheckCircle2 className="mb-4 size-6 text-ink" />
-                  <h3 className="font-heading text-xl font-black">{row.name}</h3>
-                  <p className="mt-3 font-mono text-xs font-bold leading-6 text-ink/55">
-                    {row.fields}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section className="py-12">
-            <div className="rounded-[3rem] border-2 border-ink bg-ink p-8 text-cream shadow-[16px_16px_0_var(--color-sun)] md:p-10">
-              <ShieldCheck className="mb-6 size-10 text-mint" />
-              <h2 className="font-heading text-4xl font-black tracking-[-0.04em]">
-                Hints with citations — not hallucinations.
-              </h2>
-              <p className="mt-4 max-w-2xl font-medium leading-7 text-white/65">
-                Query responses stream tokens first, then return sources from your
-                ingested notes so students can verify every hint against the
-                community knowledge base.
-              </p>
-              <Link
-                href="/sign-up"
-                className="mt-7 inline-flex items-center gap-2 rounded-full bg-sun px-6 py-3 font-black text-ink"
-              >
-                Start building
-                <ArrowRight className="size-4" />
-              </Link>
-            </div>
-          </section>
-        </main>
-      </div>
-    </div>
-  );
-}
-
-function SectionHeader({ icon, title }: { icon: React.ReactNode; title: string }) {
-  return (
-    <div className="mb-6 flex items-center gap-3">
-      <div className="grid size-12 place-items-center rounded-2xl border-2 border-ink bg-coral shadow-[4px_4px_0_var(--color-ink)]">
-        {icon}
-      </div>
-      <h2 className="font-heading text-3xl font-black tracking-[-0.035em]">
-        {title}
-      </h2>
-    </div>
+      <DocSection title="Open source">
+        <p>
+          {PRODUCT_NAME} is MIT-licensed. The study platform and the companion{" "}
+          <a
+            href={KNOWLEDGE_BASE_REPO}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 font-black underline"
+          >
+            {KNOWLEDGE_BASE_NAME}
+            <ExternalLink className="size-3.5" />
+          </a>{" "}
+          textbook are built by learners around the world. See{" "}
+          <Link href="/docs/contributors" className="font-black underline">
+            Contributors
+          </Link>{" "}
+          to claim a pattern and add your own notes.
+        </p>
+      </DocSection>
+    </>
   );
 }

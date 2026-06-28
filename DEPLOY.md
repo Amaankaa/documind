@@ -158,11 +158,12 @@ Workflow: `.github/workflows/ci.yml`
 
 ### CD (push to `main` only)
 
-After CI passes, deploys via SSH using `scripts/deploy.sh`:
+After CI passes, deploys over SSH (inline in `.github/workflows/ci.yml`):
 
 1. `git fetch` + reset to `origin/main`
 2. `docker compose -f docker-compose.prod.yml build`
 3. `docker compose up -d`
+4. `docker image prune -f`
 
 ### Required GitHub secrets
 
@@ -204,7 +205,11 @@ Paste `algomentor_deploy` (private key) into GitHub secret `DROPLET_SSH_KEY`.
 
 ```bash
 ssh root@<DROPLET_IP>
-cd /root/documind && git pull origin main && bash scripts/deploy.sh
+cd /root/documind
+git pull origin main
+docker compose -f docker-compose.prod.yml build
+docker compose -f docker-compose.prod.yml up -d
+docker image prune -f
 ```
 
 Or trigger **Actions → CI/CD → Run workflow**.

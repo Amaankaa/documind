@@ -311,6 +311,36 @@
   z-index: 1;
 }
 
+/* ── Landing depth & motion ────────────────────────────────
+   Glow/glass/parallax helpers for the marketing page. These add depth
+   only — the warm @theme palette above stays the single source of truth.
+   All loops disable under prefers-reduced-motion. */
+@keyframes mesh-drift {
+  0% { transform: translate3d(0, 0, 0) scale(1) rotate(0deg); }
+  33% { transform: translate3d(4%, -3%, 0) scale(1.08) rotate(4deg); }
+  66% { transform: translate3d(-3%, 4%, 0) scale(0.96) rotate(-3deg); }
+  100% { transform: translate3d(0, 0, 0) scale(1) rotate(0deg); }
+}
+
+.animate-mesh-drift {
+  animation: mesh-drift 26s ease-in-out infinite;
+  will-change: transform;
+}
+
+/* Frosted surface matching the nav's backdrop-blur treatment. */
+.glass-card {
+  background: color-mix(in oklab, var(--color-cream) 68%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid color-mix(in oklab, var(--color-ink) 10%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-mesh-drift {
+    animation: none;
+  }
+}
+
 .dark .theme-app {
   --color-ink: #f4eee2;
   --color-ink-soft: #e4dccb;

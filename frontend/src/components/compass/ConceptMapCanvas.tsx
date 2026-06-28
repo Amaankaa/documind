@@ -4,6 +4,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Crosshair, Info, Maximize2, Minus, Plus, RotateCcw } from "lucide-react";
 import type { ConceptEdge, ConceptNode } from "@/lib/api";
+import {
+  STATUS_STYLES,
+  nodeFill,
+  nodeStroke,
+  nodeGlow,
+  progressRatio,
+} from "@/lib/conceptStatus";
 import { cn } from "@/lib/utils";
 
 const NODE_W = 280;
@@ -21,73 +28,6 @@ const PAN_DRAG_THRESHOLD = 4;
 
 function clampZoom(value: number) {
   return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, value));
-}
-
-const STATUS_STYLES: Record<
-  ConceptNode["status"],
-  { fill: string; stroke: string; badge: string; progress: string; glow: string; label: string }
-> = {
-  locked: {
-    fill: "var(--color-cream)",
-    stroke: "color-mix(in srgb, var(--color-ink) 25%, transparent)",
-    badge: "bg-ink/10 text-ink/45",
-    progress: "var(--color-ink)",
-    glow: "rgba(20, 17, 15, 0.08)",
-    label: "Locked",
-  },
-  available: {
-    fill: "color-mix(in srgb, var(--color-sun) 14%, var(--color-cream))",
-    stroke: "var(--color-ink)",
-    badge: "bg-sun text-ink",
-    progress: "var(--color-sun)",
-    glow: "rgba(255, 204, 51, 0.45)",
-    label: "Ready",
-  },
-  in_progress: {
-    fill: "color-mix(in srgb, var(--color-lilac) 18%, var(--color-cream))",
-    stroke: "var(--color-ink)",
-    badge: "bg-violet text-ink",
-    progress: "var(--color-violet)",
-    glow: "rgba(124, 58, 237, 0.4)",
-    label: "Studying",
-  },
-  mastered: {
-    fill: "color-mix(in srgb, var(--color-mint) 24%, var(--color-cream))",
-    stroke: "var(--color-ink)",
-    badge: "bg-mint text-ink",
-    progress: "var(--color-mint)",
-    glow: "rgba(167, 243, 208, 0.55)",
-    label: "Done",
-  },
-};
-
-function nodeFill(concept: ConceptNode): string {
-  if (concept.contributor_wanted) {
-    return "color-mix(in srgb, var(--color-coral) 16%, var(--color-cream))";
-  }
-  return STATUS_STYLES[concept.status].fill;
-}
-
-function nodeStroke(concept: ConceptNode): string {
-  if (concept.contributor_wanted) return "var(--color-ink)";
-  return STATUS_STYLES[concept.status].stroke;
-}
-
-function nodeGlow(concept: ConceptNode, selected: boolean): string {
-  if (selected) return "rgba(255, 204, 51, 0.65)";
-  if (concept.contributor_wanted) return "rgba(255, 138, 101, 0.45)";
-  if (concept.status === "locked") return "transparent";
-  return STATUS_STYLES[concept.status].glow;
-}
-
-function progressRatio(concept: ConceptNode): number {
-  if (concept.status === "mastered") return 1;
-  const { required, verified } = concept.mastery;
-  if (required <= 0) {
-    if (concept.status === "in_progress") return 0.35;
-    return 0;
-  }
-  return Math.min(1, verified / required);
 }
 
 function splitTitle(title: string): string[] {

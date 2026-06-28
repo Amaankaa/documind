@@ -2,7 +2,8 @@
 
 **Open-source, graph-guided prep for big-tech coding interviews.**
 
-**Live app:** https://app.algomentor.me
+**Live app:** https://app.algomentor.me  
+**Documentation:** https://app.algomentor.me/docs (no sign-up required)
 
 AlgoMentor tells you *what* to study next (prerequisite DAG + topological sort), links you to
 *community-written notes* with Python templates and LeetCode picks, and grounds an AI tutor in

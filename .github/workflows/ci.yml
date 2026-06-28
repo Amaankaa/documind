@@ -91,8 +91,16 @@ jobs:
           script: |
             DEPLOY_PATH="${{ secrets.DEPLOY_PATH }}"
             if [ -z "$DEPLOY_PATH" ]; then DEPLOY_PATH="/root/documind"; fi
+            COMPOSE_FILE="docker-compose.prod.yml"
             cd "$DEPLOY_PATH"
-            echo "==> Syncing repo to latest main"
+            echo "[deploy] sync repo"
             git fetch origin main
             git reset --hard origin/main
-            bash scripts/deploy.sh
+            echo "[deploy] build"
+            docker compose -f "$COMPOSE_FILE" build
+            echo "[deploy] start"
+            docker compose -f "$COMPOSE_FILE" up -d
+            echo "[deploy] prune"
+            docker image prune -f
+            docker compose -f "$COMPOSE_FILE" ps
+            echo "[deploy] complete"

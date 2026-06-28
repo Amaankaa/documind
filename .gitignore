@@ -27,6 +27,7 @@ backend/.local_storage/
 
 # Scratch / throwaway scripts (e.g. ad-hoc API test at repo root)
 /.py
+/scripts/
 
 # IDE
 .vscode/
