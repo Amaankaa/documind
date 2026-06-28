@@ -204,7 +204,7 @@ Paste `algomentor_deploy` (private key) into GitHub secret `DROPLET_SSH_KEY`.
 
 ```bash
 ssh root@<DROPLET_IP>
-cd /root/documind && bash scripts/deploy.sh
+cd /root/documind && git pull origin main && bash scripts/deploy.sh
 ```
 
 Or trigger **Actions → CI/CD → Run workflow**.

@@ -91,6 +91,8 @@ jobs:
           script: |
             DEPLOY_PATH="${{ secrets.DEPLOY_PATH }}"
             if [ -z "$DEPLOY_PATH" ]; then DEPLOY_PATH="/root/documind"; fi
-            export DEPLOY_PATH
             cd "$DEPLOY_PATH"
+            echo "==> Syncing repo to latest main"
+            git fetch origin main
+            git reset --hard origin/main
             bash scripts/deploy.sh
