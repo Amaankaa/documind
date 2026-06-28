@@ -350,13 +350,13 @@ export function ConceptMapCanvas({
     if (!container) return;
 
     const onWheel = (event: WheelEvent) => {
-      if (!event.ctrlKey && !event.metaKey) return;
       event.preventDefault();
       event.stopPropagation();
 
       const rect = container.getBoundingClientRect();
       const pointerX = event.clientX - rect.left;
       const pointerY = event.clientY - rect.top;
+      // Scroll up (negative deltaY) zooms in; scroll down zooms out.
       const nextZoom = clampZoom(zoomRef.current - event.deltaY * 0.002);
       applyZoomAtPointer(nextZoom, pointerX, pointerY);
     };
@@ -885,7 +885,7 @@ export function ConceptMapCanvas({
       >
         <div className="flex flex-wrap items-center justify-center gap-3">
           <span className="text-[10px] font-semibold text-ink/40">
-            Drag to move · Pinch/Ctrl+scroll to zoom · Focus view shows nearby topics first
+            Drag to move · Scroll to zoom · Focus view shows nearby topics first
           </span>
           <button
             type="button"
