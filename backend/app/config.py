@@ -48,7 +48,10 @@ class Settings(BaseSettings):
     local_storage_dir: str = ".local_storage"
 
     # ── CORS ──────────────────────────────────────────────────────────────────
-    allowed_origins: list[str] = ["http://localhost:3000"]
+    allowed_origins: list[str] = [
+        "http://localhost:3000",
+        "http://localhost:3001",
+    ]
 
     # ── Rate Limiting ─────────────────────────────────────────────────────────
     query_rate_limit: str = "20/minute"

@@ -63,6 +63,23 @@ async def get_user_api_key(db: AsyncSession, user_id: uuid.UUID) -> str | None:
     return decrypt_api_key(row.encrypted_api_key)
 
 
+EVAL_BYOK_MESSAGE = (
+    "Evaluation requires your own LLM API key. Add one in Settings — "
+    "case generation and harness runs use your key, not the shared tutor quota."
+)
+
+
+async def require_user_api_key(db: AsyncSession, user_id: uuid.UUID) -> str:
+    """Return the user's decrypted API key or raise if eval/chat BYOK is missing."""
+    key = await get_user_api_key(db, user_id)
+    if not key:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=EVAL_BYOK_MESSAGE,
+        )
+    return key
+
+
 async def save_user_api_key(
     db: AsyncSession,
     user: User,

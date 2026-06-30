@@ -1,7 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
+import { useAuth } from "@clerk/nextjs";
+import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
   Bar,
@@ -25,6 +28,7 @@ import { toast } from "sonner";
 import {
   evalApi,
   api,
+  llmKeyApi,
   type EvalCase,
   type EvalResult,
   type EvalRun,
@@ -37,6 +41,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { fadeIn, staggerContainer } from "@/components/brand/motion";
+import { EvalByokRequired, EvalCommunityBlocked, EvalScopeExplainer } from "@/components/eval/EvalScopeNotice";
+import { useMe } from "@/hooks/useMe";
 import { cn } from "@/lib/utils";
 
 interface DocLite {
@@ -53,6 +59,26 @@ function pct(v: number | null | undefined): string {
 
 export default function EvalPage() {
   const { id: kbId } = useParams<{ id: string }>();
+  const { getToken, isLoaded, isSignedIn } = useAuth();
+  const { data: me, isLoading: meLoading } = useMe();
+
+  const { data: llmKeyStatus } = useQuery({
+    queryKey: ["llm-key"],
+    queryFn: async () => {
+      const token = await getToken();
+      return (await llmKeyApi.status({ headers: { Authorization: `Bearer ${token}` } })).data;
+    },
+    enabled: isLoaded && !!isSignedIn,
+    staleTime: 30_000,
+  });
+  const hasOwnKey = llmKeyStatus?.using_own_key ?? false;
+
+  const personalKbId = me?.personal_kb_id ?? null;
+  const communityKbId = me?.community_kb_id ?? null;
+  const isCommunityKb = !!communityKbId && kbId === communityKbId;
+  const isPersonalKb = !!personalKbId && kbId === personalKbId;
+  const uploadHref = personalKbId ? `/kb/${personalKbId}/docs` : "/dashboard";
+  const personalEvalHref = personalKbId ? `/kb/${personalKbId}/eval` : "/dashboard";
 
   const [sets, setSets] = useState<EvalSetSummary[]>([]);
   const [selectedSetId, setSelectedSetId] = useState<string | null>(null);
@@ -95,6 +121,8 @@ export default function EvalPage() {
 
   // Initial load: sets + KB documents (for manual ground-truth tagging).
   useEffect(() => {
+    if (meLoading || isCommunityKb || !isPersonalKb) return;
+
     (async () => {
       setLoading(true);
       const [loaded] = await Promise.all([
@@ -120,7 +148,7 @@ export default function EvalPage() {
     return () => {
       if (pollRef.current) clearTimeout(pollRef.current);
     };
-  }, [kbId, loadSets, loadDetail]);
+  }, [kbId, loadSets, loadDetail, meLoading, isCommunityKb, isPersonalKb]);
 
   const selectSet = async (setId: string) => {
     setSelectedSetId(setId);
@@ -248,6 +276,7 @@ export default function EvalPage() {
   const running = run?.status === "pending" || run?.status === "running";
   const completed = run?.status === "completed";
   const readyDocs = docs.filter((d) => d.status === "ready");
+  const pageLoading = meLoading || (isPersonalKb && loading);
 
   const metricBars = completed
     ? [
@@ -277,19 +306,45 @@ export default function EvalPage() {
             </>
           }
           title="Does it actually answer?"
-          description="Score retrieval and answer quality on a labeled test set — hit rate, MRR, groundedness, and relevance — so 'it works' becomes a number."
+          description="Score retrieval and answer quality on your uploaded documents — hit rate, MRR, groundedness, and relevance — so “it works” becomes a number."
           tone="bg-violet"
           badge="Evaluation"
         />
 
-        {loading ? (
+        {isCommunityKb && (
+          <EvalCommunityBlocked personalEvalHref={personalEvalHref} uploadHref={uploadHref} />
+        )}
+
+        {!isCommunityKb && !meLoading && !isPersonalKb && (
+          <BrutalCard className="p-8 text-center">
+            <p className="font-heading text-xl font-black">Switch to your personal workspace</p>
+            <p className="mt-2 text-sm font-medium text-ink/65">
+              Evaluation only runs on files you uploaded — not this knowledge base.
+            </p>
+            <Button asChild className="mt-5 border-2 border-ink bg-sun font-black text-ink shadow-[4px_4px_0_var(--color-ink)]">
+              <Link href={personalEvalHref}>Open my eval workspace</Link>
+            </Button>
+          </BrutalCard>
+        )}
+
+        {pageLoading ? (
           <div className="grid gap-6 lg:grid-cols-3">
             {[...Array(3)].map((_, i) => (
               <Skeleton key={i} className="h-64 rounded-[2rem] bg-ink/10" />
             ))}
           </div>
-        ) : (
+        ) : isPersonalKb ? (
           <motion.div initial="hidden" animate="visible" variants={staggerContainer} className="space-y-6">
+            <motion.div variants={fadeIn}>
+              <EvalScopeExplainer uploadHref={uploadHref} readyCount={readyDocs.length} />
+            </motion.div>
+
+            {!hasOwnKey && llmKeyStatus && (
+              <motion.div variants={fadeIn}>
+                <EvalByokRequired />
+              </motion.div>
+            )}
+
             {/* Set picker + create */}
             <motion.div variants={fadeIn}>
               <BrutalCard className="p-5 md:p-6">
@@ -346,10 +401,11 @@ export default function EvalPage() {
                 {/* Build the set: generate + manual */}
                 <motion.div variants={fadeIn} className="grid gap-6 lg:grid-cols-2">
                   <BrutalCard className="p-5 md:p-6">
-                    <SectionHead icon={<Sparkles className="size-5" />} title="Generate from documents" sub="Gemini writes questions from your docs" />
+                    <SectionHead icon={<Sparkles className="size-5" />} title="Generate from your uploads" sub="Gemini writes questions from files you added" />
                     <p className="mt-3 rounded-xl border-2 border-dashed border-ink/25 bg-sun/30 px-3 py-2 text-xs font-semibold text-ink/65">
-                      Ground truth is <strong>synthetic</strong>: each question is written from a source
-                      chunk, and that chunk&apos;s document is treated as the correct retrieval target.
+                      Ground truth is <strong>synthetic</strong>: each question is written from a
+                      chunk in <strong>your uploaded documents</strong> — not the community study
+                      notes.
                     </p>
                     <div className="mt-4 flex items-center gap-2">
                       <Input
@@ -362,8 +418,9 @@ export default function EvalPage() {
                       />
                       <Button
                         onClick={handleGenerate}
-                        disabled={generating || readyDocs.length === 0}
-                        className="h-10 gap-2 border-2 border-ink bg-mint font-black text-ink shadow-[3px_3px_0_var(--color-ink)] hover:bg-mint"
+                        disabled={generating || readyDocs.length === 0 || !hasOwnKey}
+                        title={!hasOwnKey ? "Add your API key in Settings first" : undefined}
+                        className="h-10 gap-2 border-2 border-ink bg-mint font-black text-ink shadow-[3px_3px_0_var(--color-ink)] hover:bg-mint disabled:opacity-50"
                       >
                         {generating ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
                         Generate cases
@@ -371,7 +428,11 @@ export default function EvalPage() {
                     </div>
                     {readyDocs.length === 0 && (
                       <p className="mt-2 text-xs font-semibold text-coral">
-                        No processed documents yet — upload one first.
+                        No processed uploads yet —{" "}
+                        <Link href={uploadHref} className="font-black underline">
+                          add a document
+                        </Link>{" "}
+                        to your workspace first.
                       </p>
                     )}
                   </BrutalCard>
@@ -421,8 +482,9 @@ export default function EvalPage() {
                       <SectionHead icon={<FlaskConical className="size-5" />} title={`${cases.length} test case${cases.length === 1 ? "" : "s"}`} sub="Questions + labeled relevant documents" />
                       <Button
                         onClick={handleRun}
-                        disabled={running || cases.length === 0}
-                        className="h-10 shrink-0 gap-2 border-2 border-ink bg-violet font-black text-ink shadow-[4px_4px_0_var(--color-ink)] hover:bg-violet"
+                        disabled={running || cases.length === 0 || !hasOwnKey}
+                        title={!hasOwnKey ? "Add your API key in Settings first" : undefined}
+                        className="h-10 shrink-0 gap-2 border-2 border-ink bg-violet font-black text-ink shadow-[4px_4px_0_var(--color-ink)] hover:bg-violet disabled:opacity-50"
                       >
                         {running ? <Loader2 className="size-4 animate-spin" /> : <Play className="size-4" />}
                         {running ? "Running…" : "Run evaluation"}
@@ -498,7 +560,7 @@ export default function EvalPage() {
               </>
             )}
           </motion.div>
-        )}
+        ) : null}
       </div>
     </div>
   );

@@ -20,27 +20,23 @@ from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
-from app.models import EvalCase, EvalResult, EvalRun, EvalSet
+from app.models import EvalCase, EvalResult, EvalRun, EvalSet, KnowledgeBase, Organization
 from app.services import eval_metrics
 from app.services.llm import answer_once
 from app.services.retrieval import retrieve_top_chunks
+from app.services.user_llm_credentials import get_user_api_key
 
 settings = get_settings()
 
 
 # ── LLM-as-judge ──────────────────────────────────────────────────────────────
 
-_judge_llm = None
 
+def _judge_llm(api_key: str):
+    """Deterministic (temp 0) chat client for judging — always uses caller's BYOK."""
+    from app.services.llm_factory import get_chat_llm
 
-def _get_judge_llm():
-    """Lazily build a deterministic (temp 0) chat client for judging."""
-    global _judge_llm
-    if _judge_llm is None:
-        from app.services.llm_factory import get_chat_llm
-
-        _judge_llm = get_chat_llm(streaming=False, temperature=0.0)
-    return _judge_llm
+    return get_chat_llm(streaming=False, temperature=0.0, api_key=api_key)
 
 
 _JUDGE_PROMPT = """\
@@ -104,10 +100,10 @@ def _parse_judge_json(raw: str) -> dict:
     }
 
 
-async def judge_answer(question: str, answer: str, context: str) -> dict:
+async def judge_answer(question: str, answer: str, context: str, *, api_key: str) -> dict:
     """Score one answer for groundedness + relevance. Returns clamped floats."""
     prompt = _JUDGE_PROMPT.format(question=question, context=context, answer=answer)
-    result = await _get_judge_llm().ainvoke(prompt)
+    result = await _judge_llm(api_key).ainvoke(prompt)
     content = result.content if hasattr(result, "content") else result
     if not isinstance(content, str):
         content = str(content)
@@ -127,7 +123,7 @@ EXCERPT:
 
 
 async def generate_eval_cases(
-    kb_id: uuid.UUID, db: AsyncSession, num_cases: int = 8
+    kb_id: uuid.UUID, db: AsyncSession, num_cases: int = 8, *, api_key: str
 ) -> list[dict]:
     """Sample random chunks from the KB's ready documents and have Gemini write
     a question for each. The chunk's document becomes the labeled ground truth.
@@ -151,7 +147,7 @@ async def generate_eval_cases(
         )
     ).fetchall()
 
-    llm = _get_judge_llm()
+    llm = _judge_llm(api_key)
     cases: list[dict] = []
     for row in rows:
         excerpt = (row.content or "")[:2000]
@@ -196,6 +192,20 @@ async def run_evaluation(run_id: uuid.UUID, db: AsyncSession) -> None:
         eval_set = (
             await db.execute(select(EvalSet).where(EvalSet.id == run.eval_set_id))
         ).scalar_one()
+        kb = (
+            await db.execute(select(KnowledgeBase).where(KnowledgeBase.id == eval_set.kb_id))
+        ).scalar_one()
+        org = (
+            await db.execute(select(Organization).where(Organization.id == kb.org_id))
+        ).scalar_one()
+        user_api_key = await get_user_api_key(db, org.owner_id)
+        if not user_api_key:
+            run.status = "failed"
+            run.error = "No LLM API key configured for this workspace."
+            run.finished_at = datetime.now(timezone.utc)
+            await db.commit()
+            return
+
         cases = (
             await db.execute(select(EvalCase).where(EvalCase.eval_set_id == eval_set.id))
         ).scalars().all()
@@ -220,8 +230,12 @@ async def run_evaluation(run_id: uuid.UUID, db: AsyncSession) -> None:
             from app.services.llm import _build_context  # local import: avoid cycle at import time
 
             context = _build_context(chunks)
-            answer = await answer_once(case.question, chunks, org_name=eval_set.name)
-            judged = await judge_answer(case.question, answer, context)
+            answer = await answer_once(
+                case.question, chunks, org_name=eval_set.name, user_api_key=user_api_key
+            )
+            judged = await judge_answer(
+                case.question, answer, context, api_key=user_api_key
+            )
 
             hits.append(1.0 if hit else 0.0)
             rrs.append(rr)

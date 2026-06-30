@@ -145,6 +145,7 @@ async def answer_once(
     chunks: list[RetrievedChunk],
     org_name: str = "your organization",
     history: list[tuple[str, str]] | None = None,
+    user_api_key: str | None = None,
 ) -> str:
     """Non-streaming sibling of stream_rag_response — returns the full answer.
 
@@ -152,7 +153,7 @@ async def answer_once(
     rather than a token stream. Shares the same prompt and context builder so
     it evaluates the exact behaviour the live chat path produces.
     """
-    llm = get_chat_llm(streaming=False, temperature=1.0)
+    llm = get_chat_llm(streaming=False, temperature=1.0, api_key=user_api_key)
     chain = RAG_PROMPT | llm
     result = await chain.ainvoke(
         {

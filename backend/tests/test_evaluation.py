@@ -20,6 +20,7 @@ import pytest
 from app.models import EvalCase, EvalResult, EvalRun, EvalSet
 from app.services import eval_metrics
 from app.services.evaluation import _parse_judge_json, judge_answer, run_evaluation
+from app.services.user_llm_credentials import save_user_api_key
 from app.services.retrieval import RetrievedChunk
 
 # NOTE: no module-level asyncio mark — this file mixes pure-sync metric tests
@@ -82,8 +83,8 @@ async def test_judge_answer_uses_llm(monkeypatch):
     fake_llm.ainvoke = AsyncMock(
         return_value=MagicMock(content='{"groundedness": 0.9, "relevance": 0.8, "rationale": "good"}')
     )
-    with patch("app.services.evaluation._get_judge_llm", return_value=fake_llm):
-        out = await judge_answer("q", "a", "context")
+    with patch("app.services.evaluation._judge_llm", return_value=fake_llm):
+        out = await judge_answer("q", "a", "context", api_key="sk-test")
     assert out["groundedness"] == 0.9
     assert out["relevance"] == 0.8
 
@@ -158,10 +159,11 @@ async def test_eval_set_is_tenant_scoped(client, make_user, make_org, make_kb, m
 
 
 @asyncio_test
-async def test_run_requires_cases(client, make_user, make_org, make_kb, mock_auth):
+async def test_run_requires_cases(client, db, make_user, make_org, make_kb, mock_auth):
     user = await make_user()
     org = await make_org(owner=user)
     kb = await make_kb(org=org)
+    await save_user_api_key(db, user, api_key="sk-test-eval-byok-key")
     with mock_auth(clerk_id=user.clerk_id, email=user.email) as headers:
         created = await client.post(
             f"/api/kb/{kb.id}/eval-sets", json={"name": "Empty"}, headers=headers
@@ -172,10 +174,11 @@ async def test_run_requires_cases(client, make_user, make_org, make_kb, mock_aut
 
 
 @asyncio_test
-async def test_start_run_creates_pending_run(client, make_user, make_org, make_kb, mock_auth):
+async def test_start_run_creates_pending_run(client, db, make_user, make_org, make_kb, mock_auth):
     user = await make_user()
     org = await make_org(owner=user)
     kb = await make_kb(org=org)
+    await save_user_api_key(db, user, api_key="sk-test-eval-byok-key")
     with mock_auth(clerk_id=user.clerk_id, email=user.email) as headers:
         created = await client.post(
             f"/api/kb/{kb.id}/eval-sets", json={"name": "S"}, headers=headers
@@ -192,6 +195,26 @@ async def test_start_run_creates_pending_run(client, make_user, make_org, make_k
     assert resp.status_code == 201
     assert resp.json()["status"] == "pending"
     assert resp.json()["num_cases"] == 1
+
+
+@asyncio_test
+async def test_run_requires_byok(client, make_user, make_org, make_kb, mock_auth):
+    user = await make_user()
+    org = await make_org(owner=user)
+    kb = await make_kb(org=org)
+    with mock_auth(clerk_id=user.clerk_id, email=user.email) as headers:
+        created = await client.post(
+            f"/api/kb/{kb.id}/eval-sets", json={"name": "S"}, headers=headers
+        )
+        set_id = created.json()["id"]
+        await client.post(
+            f"/api/eval-sets/{set_id}/cases",
+            json={"question": "q", "relevant_doc_ids": []},
+            headers=headers,
+        )
+        resp = await client.post(f"/api/eval-sets/{set_id}/run", headers=headers)
+    assert resp.status_code == 403
+    assert "API key" in resp.json()["detail"]
 
 
 @asyncio_test
@@ -240,6 +263,10 @@ async def test_run_evaluation_scores_and_aggregates(db, make_user, make_org, mak
     judge_values = {"groundedness": 0.8, "relevance": 1.0, "rationale": "ok"}
 
     with (
+        patch(
+            "app.services.evaluation.get_user_api_key",
+            new=AsyncMock(return_value="sk-test-eval-key"),
+        ),
         patch("app.services.evaluation.retrieve_top_chunks", new=AsyncMock(side_effect=fake_retrieve)),
         patch("app.services.evaluation.answer_once", new=AsyncMock(return_value="an answer")),
         patch("app.services.evaluation.judge_answer", new=AsyncMock(return_value=judge_values)),
@@ -274,9 +301,15 @@ async def test_run_evaluation_marks_failed_on_error(db, make_user, make_org, mak
     await db.commit()
     await db.refresh(run)
 
-    with patch(
-        "app.services.evaluation.retrieve_top_chunks",
-        new=AsyncMock(side_effect=RuntimeError("retrieval exploded")),
+    with (
+        patch(
+            "app.services.evaluation.get_user_api_key",
+            new=AsyncMock(return_value="sk-test-eval-key"),
+        ),
+        patch(
+            "app.services.evaluation.retrieve_top_chunks",
+            new=AsyncMock(side_effect=RuntimeError("retrieval exploded")),
+        ),
     ):
         await run_evaluation(run.id, db)
 

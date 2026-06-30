@@ -20,6 +20,7 @@ from app.models import (
     Organization,
     User,
 )
+from app.services.user_llm_credentials import require_user_api_key
 
 router = APIRouter(prefix="/api", tags=["evaluation"])
 settings = get_settings()
@@ -58,6 +59,20 @@ async def _get_kb_for_org(kb_id: uuid.UUID, org: Organization, db: AsyncSession)
     ).scalar_one_or_none()
     if kb is None:
         raise HTTPException(status_code=404, detail="Knowledge base not found")
+    return kb
+
+
+async def _get_eval_kb(kb_id: uuid.UUID, org: Organization, db: AsyncSession) -> KnowledgeBase:
+    """Eval runs only against the caller's personal workspace — not the community corpus."""
+    kb = await _get_kb_for_org(kb_id, org, db)
+    if kb.is_community:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Evaluation runs on your uploaded documents only, not the shared community notes. "
+                "Open your personal workspace to upload files and run eval."
+            ),
+        )
     return kb
 
 
@@ -176,7 +191,7 @@ async def create_eval_set(
     db: AsyncSession = Depends(get_db),
 ):
     _, org = auth
-    await _get_kb_for_org(kb_id, org, db)
+    await _get_eval_kb(kb_id, org, db)
 
     eval_set = EvalSet(kb_id=kb_id, name=body.name)
     db.add(eval_set)
@@ -201,7 +216,7 @@ async def list_eval_sets(
     db: AsyncSession = Depends(get_db),
 ):
     _, org = auth
-    await _get_kb_for_org(kb_id, org, db)
+    await _get_eval_kb(kb_id, org, db)
 
     sets = (
         await db.execute(
@@ -346,13 +361,14 @@ async def generate_cases(
     """
     from app.services.evaluation import generate_eval_cases
 
-    _, org = auth
-    await _get_kb_for_org(kb_id, org, db)
+    user, org = auth
+    api_key = await require_user_api_key(db, user.id)
+    await _get_eval_kb(kb_id, org, db)
     eval_set = await _get_set_for_org(set_id, org, db)
     if eval_set.kb_id != kb_id:
         raise HTTPException(status_code=404, detail="Eval set not found")
 
-    generated = await generate_eval_cases(kb_id, db, body.num_cases)
+    generated = await generate_eval_cases(kb_id, db, body.num_cases, api_key=api_key)
     if not generated:
         raise HTTPException(
             status_code=400,
@@ -382,7 +398,8 @@ async def start_run(
     auth: tuple[User, Organization] = Depends(get_current_user_org),
     db: AsyncSession = Depends(get_db),
 ):
-    _, org = auth
+    user, org = auth
+    await require_user_api_key(db, user.id)
     await _get_set_for_org(set_id, org, db)
     count = (
         await db.execute(
